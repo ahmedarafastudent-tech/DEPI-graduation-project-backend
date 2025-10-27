@@ -1,5 +1,5 @@
-const asyncHandler = require("express-async-handler");
-const Order = require("../models/orderModel");
+const asyncHandler = require('express-async-handler');
+const Order = require('../models/orderModel');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -17,7 +17,17 @@ const addOrderItems = asyncHandler(async (req, res) => {
 
   if (!orderItems || orderItems.length === 0) {
     res.status(400);
-    throw new Error("No order items");
+    throw new Error('No order items');
+  }
+
+  // Validate that all products exist
+  const Product = require('../models/productModel');
+  for (const item of orderItems) {
+    const prod = await Product.findById(item.product);
+    if (!prod) {
+      res.status(404);
+      throw new Error('Product not found');
+    }
   }
 
   const order = new Order({
@@ -45,6 +55,11 @@ const getOrderById = asyncHandler(async (req, res) => {
   );
 
   if (order) {
+    // Only allow owners (or admins) to access the order
+    if (order.user._id.toString() !== req.user._id.toString()) {
+      res.status(403);
+      throw new Error('Not authorized to view this order');
+    }
     res.json(order);
   } else {
     res.status(404);
