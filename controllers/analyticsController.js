@@ -2,9 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Analytics = require('../models/analyticsModel');
 const AppError = require('../utils/appError');
 
-// @desc    Track event
-// @route   POST /api/analytics/event
-// @access  Private
+
 const trackEvent = asyncHandler(async (req, res) => {
   const { eventType, metadata } = req.body;
 
@@ -24,9 +22,7 @@ const trackEvent = asyncHandler(async (req, res) => {
   res.status(201).json(event);
 });
 
-// @desc    Get analytics by date range
-// @route   GET /api/analytics
-// @access  Private/Admin
+
 const getAnalytics = asyncHandler(async (req, res) => {
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as admin', 401);
@@ -44,7 +40,7 @@ const getAnalytics = asyncHandler(async (req, res) => {
     end.setHours(23, 59, 59, 999);
     query.timestamp = { $gte: start, $lte: end };
   } else {
-    // Default last 30 days
+    
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
@@ -72,9 +68,7 @@ const getAnalytics = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get user activity
-// @route   GET /api/analytics/user/:userId
-// @access  Private/Admin
+
 const getUserActivity = asyncHandler(async (req, res) => {
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as admin', 401);
@@ -84,10 +78,8 @@ const getUserActivity = asyncHandler(async (req, res) => {
     .sort({ timestamp: -1 })
     .populate('userId', 'name email');
 
-  // Return plain array of events to match tests (normalize userId)
   const mappedEvents = events.map(event => {
     const plain = event.toObject();
-    // If populated, keep only the id (tests expect userId to be an ObjectId)
     if (plain.userId && plain.userId._id) {
       plain.userId = plain.userId._id;
     }
@@ -97,9 +89,7 @@ const getUserActivity = asyncHandler(async (req, res) => {
   res.status(200).json(mappedEvents);
 });
 
-// @desc    Get popular products
-// @route   GET /api/analytics/products
-// @access  Private/Admin
+
 const getProductAnalytics = asyncHandler(async (req, res) => {
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as admin', 401);
