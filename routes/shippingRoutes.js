@@ -8,11 +8,9 @@ const {
   calculateShipping,
 } = require('../controllers/shippingController');
 
-// Public routes
 router.route('/').get(getShippingMethods);
 router.post('/calculate', calculateShipping);
 
-// Protected routes
 router.use(protect);
 router.use(admin);
 

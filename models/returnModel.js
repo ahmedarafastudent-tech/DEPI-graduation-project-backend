@@ -87,7 +87,6 @@ const returnSchema = mongoose.Schema(
       resolvedAt: Date,
       resolution: String,
     },
-    // Admin notes field (used when admin updates status)
     adminNotes: {
       type: String,
       default: ''

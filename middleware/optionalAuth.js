@@ -21,13 +21,11 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'testsecret123'
     );
 
-    // Get user from the token
     req.user = await User.findById(decoded.id);
 
     next();

@@ -1,9 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Tax = require('../models/taxModel');
 
-// @desc    Create tax rate
-// @route   POST /api/tax
-// @access  Private/Admin
 const createTaxRate = asyncHandler(async (req, res) => {
   const {
     name,
@@ -15,7 +12,6 @@ const createTaxRate = asyncHandler(async (req, res) => {
     threshold
   } = req.body;
 
-  // If this is set as default, unset any existing default for the region
   if (isDefault) {
     await Tax.updateMany(
       { region, isDefault: true },
@@ -37,9 +33,6 @@ const createTaxRate = asyncHandler(async (req, res) => {
   res.status(201).json(tax);
 });
 
-// @desc    Get all tax rates
-// @route   GET /api/tax
-// @access  Private/Admin
 const getTaxRates = asyncHandler(async (req, res) => {
   const { region } = req.query;
   
@@ -52,9 +45,6 @@ const getTaxRates = asyncHandler(async (req, res) => {
   res.json(taxRates);
 });
 
-// @desc    Get tax rate by ID
-// @route   GET /api/tax/:id
-// @access  Private/Admin
 const getTaxRateById = asyncHandler(async (req, res) => {
   const tax = await Tax.findById(req.params.id);
 
@@ -66,14 +56,11 @@ const getTaxRateById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update tax rate
-// @route   PUT /api/tax/:id
-// @access  Private/Admin
+
 const updateTaxRate = asyncHandler(async (req, res) => {
   const tax = await Tax.findById(req.params.id);
 
   if (tax) {
-    // If updating to default, unset any existing default for the region
     if (req.body.isDefault && !tax.isDefault) {
       await Tax.updateMany(
         { region: tax.region, isDefault: true },
@@ -98,9 +85,7 @@ const updateTaxRate = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Delete tax rate
-// @route   DELETE /api/tax/:id
-// @access  Private/Admin
+
 const deleteTaxRate = asyncHandler(async (req, res) => {
   const tax = await Tax.findById(req.params.id);
 
@@ -113,13 +98,10 @@ const deleteTaxRate = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Calculate tax for cart
-// @route   POST /api/tax/calculate
-// @access  Public
+
 const calculateTax = asyncHandler(async (req, res) => {
   const { region, items, subtotal } = req.body;
 
-  // Get applicable tax rate for the region
   const taxRate = await Tax.findOne({
     region,
     isActive: true,
@@ -134,15 +116,13 @@ const calculateTax = asyncHandler(async (req, res) => {
   let taxableAmount = subtotal;
   let taxAmount = 0;
 
-  // Apply threshold if exists
   if (taxRate.threshold && subtotal < taxRate.threshold) {
     taxAmount = 0;
   } else {
-    // Calculate tax based on type
     if (taxRate.type === 'percentage') {
       taxAmount = (taxableAmount * taxRate.rate) / 100;
     } else {
-      taxAmount = taxRate.rate; // flat rate
+      taxAmount = taxRate.rate; 
     }
   }
 

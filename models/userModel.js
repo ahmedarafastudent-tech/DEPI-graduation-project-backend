@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+const { PASSWORD_PATTERN } = require('../constants/security');
+
 const userSchema = mongoose.Schema(
   {
     name: {
@@ -10,6 +12,7 @@ const userSchema = mongoose.Schema(
       trim: true,
       minlength: [2, 'Name must be at least 2 characters long'],
       maxlength: [50, 'Name cannot be more than 50 characters long'],
+      index: true, 
     },
     email: {
       type: String,
@@ -21,12 +24,13 @@ const userSchema = mongoose.Schema(
         /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/,
         'Please enter a valid email address',
       ],
+      index: true, 
     },
     password: {
       type: String,
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters long'],
-      select: false, // Don't include password in query results by default
+      select: false, 
     },
     isAdmin: {
       type: Boolean,
@@ -47,7 +51,7 @@ const userSchema = mongoose.Schema(
     },
     verificationToken: String,
     resetPasswordToken: String,
-    resetPasswordExpire: Date,
+    resetPasswordExpires: Date,
     lastLogin: {
       type: Date,
     },
@@ -66,7 +70,7 @@ const userSchema = mongoose.Schema(
         delete ret.password;
         delete ret.verificationToken;
         delete ret.resetPasswordToken;
-        delete ret.resetPasswordExpire;
+        delete ret.resetPasswordExpires;
         delete ret.loginAttempts;
         delete ret.lockedUntil;
         return ret;
@@ -93,28 +97,44 @@ userSchema.methods.generateToken = function () {
   });
 };
 
-// Generate email verification token
 userSchema.methods.getVerificationToken = function () {
   const token = crypto.randomBytes(20).toString('hex');
   this.verificationToken = token;
   return token;
 };
 
-// Generate and hash password reset token
 userSchema.methods.getResetPasswordToken = function () {
-  // Generate token
   const resetToken = crypto.randomBytes(20).toString('hex');
 
-  // Hash token and set to resetPasswordToken field
   this.resetPasswordToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
 
-  // Set expire
-  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  this.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
   return resetToken;
 };
+
+// Added: validate reset token using timing-safe comparison to mitigate timing attacks.
+// Use Buffer and crypto.timingSafeEqual to compare hashed values safely.
+userSchema.methods.validateResetPasswordToken = function (token) {
+  const crypto = require('crypto');
+  if (!this.resetPasswordToken) return false;
+  const providedHash = crypto.createHash('sha256').update(token).digest();
+  const stored = Buffer.from(this.resetPasswordToken, 'hex');
+
+  if (stored.length !== providedHash.length) return false;
+
+  try {
+    return crypto.timingSafeEqual(stored, providedHash);
+  } catch (err) {
+    return false;
+  }
+};
+
+// Add a compound index for common lookup patterns (email + isVerified).
+// This improves login/verification queries and avoids collection scans.
+userSchema.index({ email: 1, isVerified: 1 });
 
 module.exports = mongoose.model('User', userSchema);

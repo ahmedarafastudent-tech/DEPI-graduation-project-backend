@@ -237,11 +237,9 @@ Complete API documentation for the E-Commerce platform.
     ],
   },
   apis: ['./routes/*.js', './docs/**/*.yaml'],
-  // Include full documentation
   includeApiInResponse: true,
 };
 
-// Custom response validation
 const validateResponse = (req, res, spec) => {
   const responseValidation = spec.validateResponse(req, res);
   if (!responseValidation.valid) {
@@ -250,7 +248,6 @@ const validateResponse = (req, res, spec) => {
   return responseValidation.valid;
 };
 
-// Export both the Swagger spec and validation function
 module.exports = {
   swaggerSpec: swaggerJsdoc(options),
   validateResponse,

@@ -80,7 +80,6 @@ const couponSchema = mongoose.Schema(
   { timestamps: true }
 );
 
-// Check if coupon is valid
 couponSchema.methods.isValid = function () {
   const now = new Date();
   return (
@@ -91,7 +90,6 @@ couponSchema.methods.isValid = function () {
   );
 };
 
-// Calculate discount amount
 couponSchema.methods.calculateDiscount = function (subtotal) {
   if (subtotal < this.minimumPurchase) return 0;
 

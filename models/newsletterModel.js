@@ -30,7 +30,6 @@ const newsletterSchema = mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Generate unsubscribe token
 newsletterSchema.pre('save', function(next) {
   if (!this.unsubscribeToken) {
     this.unsubscribeToken = require('crypto').randomBytes(32).toString('hex');

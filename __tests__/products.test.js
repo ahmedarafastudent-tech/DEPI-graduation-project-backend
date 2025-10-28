@@ -1,5 +1,6 @@
-const request = require('supertest');
 const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Product = require('../models/productModel');
 const Category = require('../models/categoryModel');
 const User = require('../models/userModel');

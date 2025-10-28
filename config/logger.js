@@ -5,13 +5,11 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-// Ensure logs directory exists
 const logDir = path.join(__dirname, '../logs');
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Log format with metadata
 const logFormat = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.timestamp(),
@@ -21,7 +19,6 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Console format for development
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp(),
@@ -37,7 +34,6 @@ const consoleFormat = winston.format.combine(
   })
 );
 
-// Create logger instance
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   defaultMeta: {
@@ -45,7 +41,6 @@ const logger = winston.createLogger({
     pid: process.pid,
   },
   transports: [
-    // Error logs
     new winston.transports.DailyRotateFile({
       filename: path.join(logDir, 'error-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
@@ -57,7 +52,6 @@ const logger = winston.createLogger({
       handleRejections: true,
       zippedArchive: true,
     }),
-    // Combined logs
     new winston.transports.DailyRotateFile({
       filename: path.join(logDir, 'combined-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
@@ -68,7 +62,6 @@ const logger = winston.createLogger({
       handleRejections: true,
       zippedArchive: true,
     }),
-    // HTTP request logs
     new winston.transports.DailyRotateFile({
       filename: path.join(logDir, 'http-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
@@ -81,7 +74,6 @@ const logger = winston.createLogger({
   ],
 });
 
-// Add console transport in development
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new winston.transports.Console({
@@ -92,7 +84,6 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
-// Morgan middleware configuration
 const morganFormat =
   ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" - :response-time ms';
 
@@ -102,14 +93,12 @@ const morganMiddleware = morgan(morganFormat, {
   },
   skip: (req) => {
     if (process.env.NODE_ENV === 'production') {
-      // Skip logging health check endpoints in production
       return req.url === '/health' || req.url === '/api/health';
     }
     return false;
   },
 });
 
-// Utility functions for consistent logging
 const logUtil = {
   error: (message, meta = {}) => {
     logger.error(message, { metadata: meta });
@@ -193,7 +182,6 @@ const logUtil = {
   },
 };
 
-// Handle uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (err) => {
   logUtil.error('Uncaught Exception', {
     error: err.stack || err,

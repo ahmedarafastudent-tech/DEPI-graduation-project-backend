@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Subcategory = require('../models/subcategoryModel');
 const Category = require('../models/categoryModel');
 const User = require('../models/userModel');
@@ -14,12 +15,10 @@ describe('Subcategory Controller Tests', () => {
   let category;
 
   beforeAll(async () => {
-    // Clean up any existing test data first
     await User.deleteMany({});
     await Category.deleteMany({});
     await Subcategory.deleteMany({});
 
-    // Create test users
     admin = await User.create({
       name: 'Admin User',
       email: 'admin@example.com',
@@ -35,14 +34,12 @@ describe('Subcategory Controller Tests', () => {
     });
     userToken = generateToken(user._id);
 
-    // Create test category
     category = await Category.create({
       name: 'Electronics',
       slug: 'electronics',
       isActive: true
     });
 
-    // Verify category was created
     if (!category._id) {
       throw new Error('Failed to create test category');
     }
@@ -57,7 +54,6 @@ describe('Subcategory Controller Tests', () => {
 
   beforeEach(async () => {
     await Subcategory.deleteMany({});
-    // Make sure category still exists and recreate if needed
     const existingCategory = await Category.findById(category._id);
     if (!existingCategory) {
       category = await Category.create({
@@ -114,13 +110,11 @@ describe('Subcategory Controller Tests', () => {
 
   describe('GET /api/subcategories', () => {
     beforeEach(async () => {
-      // First verify category exists
       const cat = await Category.findById(category._id);
       if (!cat) {
         throw new Error('Test category not found');
       }
 
-      // Create test subcategories with verified category
       await Subcategory.create([
         {
           name: 'Smartphones',

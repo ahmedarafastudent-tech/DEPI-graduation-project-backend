@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Tax = require('../models/taxModel');
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/generateToken');
@@ -60,7 +61,6 @@ describe('Tax Controller Tests', () => {
     });
 
     it('should handle multiple default tax rates for same region', async () => {
-      // Create first default tax rate
       await Tax.create({
         name: 'US Sales Tax 1',
         rate: 8.5,
@@ -69,7 +69,6 @@ describe('Tax Controller Tests', () => {
         isDefault: true
       });
 
-      // Create second default tax rate
       const res = await request(app)
         .post('/api/tax')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -83,7 +82,6 @@ describe('Tax Controller Tests', () => {
 
       expect(res.statusCode).toBe(201);
 
-      // Check that old default is no longer default
       const oldTax = await Tax.findOne({ name: 'US Sales Tax 1' });
       expect(oldTax.isDefault).toBe(false);
     });
@@ -204,7 +202,7 @@ describe('Tax Controller Tests', () => {
         });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.taxAmount).toBe(20); // 10% of 200
+      expect(res.body.taxAmount).toBe(20); 
       expect(res.body.total).toBe(220);
     });
 
@@ -213,7 +211,7 @@ describe('Tax Controller Tests', () => {
         .post('/api/tax/calculate')
         .send({
           region: 'USA',
-          subtotal: 50 // Below threshold
+          subtotal: 50
         });
 
       expect(res.statusCode).toBe(200);

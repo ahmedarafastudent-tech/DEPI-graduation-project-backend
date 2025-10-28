@@ -2,21 +2,22 @@ const { validationResult } = require('express-validator');
 
 const validate = (validations) => {
   return async (req, res, next) => {
-    // Run all validations
+    if (!validations || !Array.isArray(validations)) {
+      return next();
+    }
     await Promise.all(validations.map((validation) => validation.run(req)));
 
     const errors = validationResult(req).formatWith(error => {
       if (error.type === 'field') {
         return {
           ...error,
-          value: req.body[error.path], // Include the sanitized value
+          value: req.body[error.path], 
         };
       }
       return error;
     });
 
     if (errors.isEmpty()) {
-      // Update request body with sanitized values
       const sanitizedBody = {};
       for (const field in req.body) {
         if (Object.prototype.hasOwnProperty.call(req.body, field)) {
@@ -27,8 +28,6 @@ const validate = (validations) => {
       return next();
     }
 
-    // Return a consistent error shape expected by frontend and tests.
-    // Prefer an email validation error as the primary message when present
     const extracted = errors.array();
     const primary =
       extracted.find((e) => e.param === 'email') || extracted[0];

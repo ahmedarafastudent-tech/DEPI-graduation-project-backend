@@ -1,9 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Wishlist = require('../models/wishlistModel');
 
-// @desc    Get user's wishlist
-// @route   GET /api/wishlist
-// @access  Private
+
 const getWishlist = asyncHandler(async (req, res) => {
   let wishlist = await Wishlist.findOne({ user: req.user._id }).populate('items.product');
   
@@ -17,14 +15,11 @@ const getWishlist = asyncHandler(async (req, res) => {
   res.json(wishlist);
 });
 
-// @desc    Add item to wishlist
-// @route   POST /api/wishlist
-// @access  Private
+
 const addToWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.body;
   console.log('Controller - Looking for product ID:', productId);
 
-  // Verify product exists first
   const Product = require('../models/productModel');
   const product = await Product.findById(productId);
   if (!product) {
@@ -34,7 +29,6 @@ const addToWishlist = asyncHandler(async (req, res) => {
   }
   console.log('Controller - Found product:', product._id.toString());
 
-  // Find or create wishlist with population
   let wishlist = await Wishlist.findOne({ user: req.user._id }).populate('items.product');
   
   if (!wishlist) {
@@ -58,9 +52,7 @@ const addToWishlist = asyncHandler(async (req, res) => {
   res.json(wishlist);
 });
 
-// @desc    Remove item from wishlist
-// @route   DELETE /api/wishlist/:productId
-// @access  Private
+
 const removeFromWishlist = asyncHandler(async (req, res) => {
   const wishlist = await Wishlist.findOne({ user: req.user._id });
 
@@ -78,9 +70,7 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
   res.json(wishlist);
 });
 
-// @desc    Clear wishlist
-// @route   DELETE /api/wishlist
-// @access  Private
+
 const clearWishlist = asyncHandler(async (req, res) => {
   const wishlist = await Wishlist.findOne({ user: req.user._id });
 
@@ -95,14 +85,11 @@ const clearWishlist = asyncHandler(async (req, res) => {
   res.json({ message: 'Wishlist cleared' });
 });
 
-// @desc    Move wishlist item to cart
-// @route   POST /api/wishlist/:productId/move-to-cart
-// @access  Private
+
 const moveToCart = asyncHandler(async (req, res) => {
   const Cart = require('../models/cartModel');
   const Product = require('../models/productModel');
 
-  // Add to cart
   let cart = await Cart.findOne({ user: req.user._id });
   if (!cart) {
     cart = await Cart.create({
@@ -112,7 +99,6 @@ const moveToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // Verify product exists
   const product = await Product.findById(req.params.productId);
   if (!product) {
     res.status(404);
@@ -137,7 +123,6 @@ const moveToCart = asyncHandler(async (req, res) => {
   cart.totalPrice = cart.items.reduce((total, item) => total + item.price * item.qty, 0);
   await cart.save();
 
-  // Remove from wishlist
   const wishlist = await Wishlist.findOne({ user: req.user._id });
   if (wishlist) {
     wishlist.items = wishlist.items.filter(

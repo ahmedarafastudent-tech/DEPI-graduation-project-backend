@@ -18,7 +18,7 @@ const subcategorySchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
       required: true,
-      index: true, // Index for faster queries
+      index: true, 
       validate: {
         validator: async function(v) {
           const Category = mongoose.model('Category');

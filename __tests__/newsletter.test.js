@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Newsletter = require('../models/newsletterModel');
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/generateToken');

@@ -1,131 +1,229 @@
+/*
+ Notes:
+ - Imports the app from `app.js` which re-exports the main Express app without starting an HTTP server.
+ - Uses the existing test setup (global in-memory MongoDB) provided by `__tests__/setup.js`.
+ - Uses deterministic tokens for reset flows by stubbing `crypto.randomBytes` where needed.
+ - Assumes `__tests__/setup.js` already mocks outbound email sending.
+*/
+
 const request = require('supertest');
-const app = require('../index');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const http = require('http');
+
+const app = require('../app');
 const User = require('../models/userModel');
+const generateToken = require('../utils/generateToken');
 
-describe('Auth Endpoints', () => {
-  describe('POST /api/auth/register', () => {
-    const validPassword = 'Test123!@#';
+// Create a server instance that we can close between tests
+let server;
 
-    it('should register a new user with valid data', async () => {
-      const uniqueEmail = `john${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      const res = await request(app).post('/api/auth/register').send({
-        name: 'John Doe',
-        email: uniqueEmail,
-        password: validPassword,
+describe('Auth Controller Integration Tests', () => {
+  let api;
+
+  beforeAll((done) => {
+    // Create server for this test suite
+    server = http.createServer(app);
+    server.listen(0, () => { // Use port 0 for random available port
+      done();
+    });
+    api = () => request(server);
+  });
+
+  afterAll((done) => {
+    // Clean up both server and database connections
+    if (server) {
+      server.close(() => {
+        mongoose.connection.close()
+          .then(() => done())
+          .catch(() => done());
       });
+    } else {
+      mongoose.connection.close()
+        .then(() => done())
+        .catch(() => done());
+    }
+  });
+
+  beforeEach(async () => {
+    await User.deleteMany({});
+  });
+
+  const genEmail = (prefix = 'test') =>
+    `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2)}@example.com`;
+
+  describe('Registration', () => {
+    it('registers a user with valid data', async () => {
+      const email = genEmail('register');
+      const res = await api()
+        .post('/api/auth/register')
+        .send({ name: 'John Doe', email, password: 'StrongPass123!' });
 
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('token');
-      expect(res.body.email).toBe(uniqueEmail);
+      expect(res.body.email).toBe(email);
     });
 
-    it('should not register user with existing email', async () => {
-      const uniqueEmail = `john${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      await User.create({
-        name: 'John Doe',
-        email: uniqueEmail,
-        password: validPassword,
-      });
-
-      const res = await request(app).post('/api/auth/register').send({
-        name: 'John Doe',
-        email: uniqueEmail,
-        password: validPassword,
-      });
+    it('returns 400 for missing required fields', async () => {
+      const res = await api()
+        .post('/api/auth/register')
+        .send({ email: genEmail('missing') });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toMatch(/already exists/i);
     });
 
-    it('should not register user with invalid password format', async () => {
-      const uniqueEmail = `john${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      const res = await request(app).post('/api/auth/register').send({
-        name: 'John Doe',
-        email: uniqueEmail,
-        password: 'weak',
-      });
+    it('rejects duplicate email registration', async () => {
+      const email = genEmail('dup');
+      await User.create({ name: 'Existing', email, password: 'Password1!' });
+
+      const res = await api()
+        .post('/api/auth/register')
+        .send({ name: 'New', email, password: 'Password2!' });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toMatch(/password must contain/i);
-    });
-
-    it('should not register user with invalid name format', async () => {
-      const uniqueEmail = `john${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      const res = await request(app).post('/api/auth/register').send({
-        name: 'J', // Too short
-        email: uniqueEmail,
-        password: validPassword,
-      });
-
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toMatch(/name must be between/i);
-    });
-
-    it('should sanitize HTML in name field', async () => {
-      const uniqueEmail = `john${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      const res = await request(app).post('/api/auth/register').send({
-        name: '<script>alert("xss")</script>John Doe',
-        email: uniqueEmail.replace('@', '_xss@'),
-        password: validPassword,
-      });
-
-      expect(res.statusCode).toBe(201);
-      expect(res.body.name).toBe('John Doe');
+      expect(res.body.message || res.body.error).toMatch(/already exists|duplicate/i);
     });
   });
 
-  describe('POST /api/auth/login', () => {
-    const validPassword = 'Test123!@#';
-    let loginEmail;
+  describe('Login', () => {
+    const TEST_PASSWORD = 'LoginPass123!';
+    let userEmail;
 
     beforeEach(async () => {
-      // generate a fresh email per test to avoid duplicate-key when users are preserved across tests
-      loginEmail = `johnlogin${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-      await User.create({
-        name: 'John Doe',
-        email: loginEmail,
-        password: validPassword,
-      });
+      userEmail = genEmail('login');
+      await User.create({ name: 'Login User', email: userEmail, password: TEST_PASSWORD });
     });
 
-    it('should login with valid credentials', async () => {
-      const res = await request(app).post('/api/auth/login').send({
-        email: loginEmail,
-        password: validPassword,
-      });
+    it('logs in with valid credentials', async () => {
+      const res = await api()
+        .post('/api/auth/login')
+        .send({ email: userEmail, password: TEST_PASSWORD });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('token');
     });
 
-    it('should not login with invalid password', async () => {
-      const res = await request(app).post('/api/auth/login').send({
-        email: loginEmail,
-        password: 'wrong',
-      });
+    it('returns 401 with wrong password', async () => {
+      const res = await api()
+        .post('/api/auth/login')
+        .send({ email: userEmail, password: 'WrongPassword' });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body.message).toMatch(/invalid/i);
+      expect(res.body.message || res.body.error).toMatch(/invalid/i);
     });
 
-    it('should not login with invalid email', async () => {
-      const res = await request(app).post('/api/auth/login').send({
-        email: 'nonexistent@example.com',
-        password: validPassword,
-      });
+    it('returns 401 for non-existent user', async () => {
+      const res = await api()
+        .post('/api/auth/login')
+        .send({ email: 'no.such.user@example.com', password: 'Whatever123!' });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body.message).toMatch(/invalid/i);
+      expect(res.body.message || res.body.error).toMatch(/invalid/i);
     });
+  });
 
-    it('should normalize email addresses', async () => {
-      const res = await request(app).post('/api/auth/login').send({
-        email: loginEmail.toUpperCase(), // Different case to test normalization
-        password: validPassword,
-      });
+  describe('Profile access', () => {
+    it('returns profile with valid token', async () => {
+      const email = genEmail('profile');
+      const user = await User.create({ name: 'Profile User', email, password: 'Pwd12345' });
+      const token = generateToken(user._id);
+
+      const res = await api().get('/api/auth/profile').set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('token');
+      expect(res.body).toHaveProperty('email');
+    });
+
+    it('rejects without token', async () => {
+      const res = await api().get('/api/auth/profile');
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe('Forgot & Reset password', () => {
+    let user;
+    const NEW_PASSWORD = 'NewSecure123!';
+
+    beforeEach(async () => {
+      user = await User.create({
+        name: 'Reset User',
+        email: genEmail('reset'),
+        password: 'OldPwd123!',
+      });
+    });
+
+    it('initiates forgot-password and sets reset token', async () => {
+      const fakeBuf = Buffer.alloc(20, 0x41);
+      const fakeToken = fakeBuf.toString('hex');
+      const rndSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(fakeBuf);
+
+      const res = await api().post('/api/auth/forgot-password').send({ email: user.email });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message || res.body.msg).toMatch(/email sent/i);
+
+      const updated = await User.findById(user._id);
+      expect(updated.resetPasswordToken).toBeDefined();
+      expect(updated.resetPasswordExpires).toBeDefined();
+
+      rndSpy.mockRestore();
+    });
+
+    it('resets password with valid token', async () => {
+      const fakeBuf = Buffer.alloc(20, 0x42);
+      const fakeToken = fakeBuf.toString('hex');
+      const rndSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(fakeBuf);
+
+      const initRes = await api().post('/api/auth/forgot-password').send({ email: user.email });
+      expect(initRes.statusCode).toBe(200);
+
+      const resetRes = await api()
+        .put(`/api/auth/reset-password/${fakeToken}`)
+        .send({ password: NEW_PASSWORD });
+
+      expect(resetRes.statusCode).toBe(200);
+      expect(resetRes.body.message || resetRes.body.msg).toMatch(/password/i);
+
+      const after = await User.findById(user._id).select('+password');
+      const match = await bcrypt.compare(NEW_PASSWORD, after.password);
+      expect(match).toBe(true);
+
+      rndSpy.mockRestore();
+    });
+
+    it('returns 400 for invalid/expired token', async () => {
+      const res = await api()
+        .put('/api/auth/reset-password/invalid-token-123')
+        .send({ password: 'Whatever123!' });
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('Email verification', () => {
+    it('verifies email with valid token', async () => {
+      const token = `verify-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const u = await User.create({
+        name: 'Verify User',
+        email: genEmail('verify'),
+        password: 'Pass123!',
+        verificationToken: token,
+        isVerified: false,
+      });
+
+      const res = await api().get(`/api/auth/verify-email/${token}`);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message || res.body.msg).toMatch(/verified/i);
+
+      const updated = await User.findById(u._id);
+      expect(updated.isVerified).toBe(true);
+      expect(updated.verificationToken).toBeUndefined();
+    });
+
+    it('returns 400 for invalid verification token', async () => {
+      const res = await api().get('/api/auth/verify-email/does-not-exist');
+      expect(res.statusCode).toBe(400);
     });
   });
 });

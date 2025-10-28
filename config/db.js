@@ -1,146 +1,136 @@
-const mongoose = require('mongoose');
 const { logger } = require('./logger');
+const mongoose = require('mongoose');
 
-// Connection retry configuration
-const MAX_RETRIES = 5;
-const RETRY_INTERVAL = 5000; // 5 seconds
-let retryCount = 0;
-
-// Connection options
-const mongooseOptions = {
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 50,
-  maxConnecting: 10,
-  connectTimeoutMS: 10000,
-  retryWrites: true,
-  w: 'majority',
-  wtimeout: 2500,
-  family: 4, // Use IPv4, skip trying IPv6
+// Connection configuration
+const config = {
+  retries: {
+    max: 5,
+    interval: 5000, // 5 seconds
+    count: 0
+  },
+  options: {
+    base: {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    },
+    production: {
+      maxPoolSize: 50,
+      minPoolSize: 10,
+      connectTimeoutMS: 20000,
+      socketTimeoutMS: 45000,
+      family: 4,
+      autoIndex: false,
+      retryWrites: true,
+      serverSelectionTimeoutMS: 5000,
+      heartbeatFrequencyMS: 10000
+    }
+  }
 };
 
-// Helper function to validate MongoDB URI
+// Helper to return connection options according to NODE_ENV
+const getConnectionOptions = () => {
+  const env = process.env.NODE_ENV || 'development';
+  const base = config.options.base || {};
+
+  // Allow overrides via environment variables for pool sizing (useful in production).
+  const maxPool = Number(process.env.MONGO_MAX_POOL_SIZE || process.env.MONGO_MAX_POOL || 50);
+  const minPool = Number(process.env.MONGO_MIN_POOL_SIZE || process.env.MONGO_MIN_POOL || 5);
+
+  const poolOptions = {
+    maxPoolSize: maxPool,
+    minPoolSize: minPool,
+    // Keep the base options to ensure stable connections.
+    socketTimeoutMS: base.socketTimeoutMS || 45000,
+    serverSelectionTimeoutMS: base.serverSelectionTimeoutMS || 5000,
+  };
+
+  if (env === 'production') {
+    return { ...base, ...(config.options.production || {}), ...poolOptions };
+  }
+  if (env === 'test') {
+    return { ...base, ...(config.options.test || {}), ...poolOptions };
+  }
+  return { ...base, ...poolOptions };
+};
+
+const mongooseOptions = getConnectionOptions();
+
 const validateMongoURI = (uri) => {
   if (!uri) {
-    throw new Error('MONGO_URI is not defined in environment variables');
+    throw new Error('MONGO_URI is not set or invalid');
   }
-
-  const mongoURIPattern = /^mongodb(\+srv)?:\/\/.+/;
-  if (!mongoURIPattern.test(uri)) {
+  if (!/^mongodb(?:\+srv)?:\/\//.test(uri)) {
     throw new Error('Invalid MongoDB URI format');
   }
 };
 
-// Helper function to handle connection retries
-const retryConnection = async () => {
-  if (retryCount < MAX_RETRIES) {
-    retryCount++;
-    logger.warn(`Retrying MongoDB connection (${retryCount}/${MAX_RETRIES}) in ${RETRY_INTERVAL/1000} seconds...`);
-    await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
-    return connectDB();
+
+const retryConnection = async (uri) => {
+  config.retries.count = (config.retries.count || 0) + 1;
+  if (config.retries.count > config.retries.max) {
+    throw new Error('Exceeded max MongoDB connection retries');
   }
-  
-  logger.error('Max MongoDB connection retries reached. Exiting...');
-  process.exit(1);
+
+  const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+  const backoff = config.retries.interval * config.retries.count;
+  logger.warn(`MongoDB connection failed, retrying in ${backoff}ms (attempt ${config.retries.count})`);
+  await wait(backoff);
+  return connectDB(uri);
 };
 
-// Helper function to setup connection event handlers
+
 const setupConnectionHandlers = (connection) => {
+  if (!connection || typeof connection.on !== 'function') return;
+
   connection.on('error', (err) => {
-    logger.error('MongoDB connection error:', err);
+    logger.error('MongoDB connection error', err);
   });
 
   connection.on('disconnected', () => {
-    logger.warn('MongoDB disconnected. Attempting to reconnect...');
+    logger.warn('MongoDB disconnected');
   });
-
-  connection.on('reconnected', () => {
-    logger.info('MongoDB reconnected');
-    retryCount = 0; // Reset retry counter on successful reconnection
-  });
-
-  connection.on('reconnectFailed', () => {
-    logger.error('MongoDB reconnection failed');
-    process.exit(1);
-  });
-
-  // Monitor connection for potential issues
-  setInterval(() => {
-    const state = connection.readyState;
-    if (state !== 1) { // 1 = connected
-      logger.warn(`MongoDB connection state: ${state}`);
-    }
-  }, 30000); // Check every 30 seconds
 };
 
-// Setup process event handlers for graceful shutdown
 const setupProcessHandlers = () => {
-  const gracefulShutdown = async (signal) => {
+  const gracefulExit = async () => {
     try {
-      logger.info(`${signal} received. Closing MongoDB connection...`);
-      await mongoose.connection.close();
-      logger.info('MongoDB connection closed through app termination');
+      await mongoose.disconnect();
+      logger.info('Mongoose disconnected through app termination');
       process.exit(0);
     } catch (err) {
-      logger.error('Error during MongoDB shutdown:', err);
+      logger.error('Error during mongoose disconnect', err);
       process.exit(1);
     }
   };
 
-  // Handle different termination signals
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err);
-    gracefulShutdown('Uncaught Exception');
-  });
-  process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    gracefulShutdown('Unhandled Rejection');
-  });
+  process.once('SIGINT', gracefulExit);
+  process.once('SIGTERM', gracefulExit);
 };
 
-// Main connection function
-const connectDB = async () => {
+const connectDB = async (uri) => {
+  const mongoUri = uri || process.env.MONGO_URI;
+  validateMongoURI(mongoUri);
+
   try {
-    validateMongoURI(process.env.MONGO_URI);
-
-    const conn = await mongoose.connect(process.env.MONGO_URI, mongooseOptions);
-
+    const conn = await mongoose.connect(mongoUri, mongooseOptions);
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
-    logger.info(`Database Name: ${conn.connection.name}`);
-    logger.info(`MongoDB version: ${await conn.connection.db.admin().serverInfo().then(info => info.version)}`);
-
-    setupConnectionHandlers(mongoose.connection);
+    setupConnectionHandlers(conn.connection);
     setupProcessHandlers();
-
-    // Reset retry counter on successful connection
-    retryCount = 0;
-
+    config.retries.count = 0;
     return conn;
   } catch (error) {
     logger.error(`Error connecting to MongoDB: ${error.message}`);
-    
-    if (error.name === 'MongoServerSelectionError') {
-      logger.error('Could not connect to any MongoDB servers');
-      return retryConnection();
+    if (['MongoServerSelectionError', 'MongoNetworkError'].includes(error.name)) {
+      return retryConnection(uri);
     }
-
-    if (error.name === 'MongoNetworkError') {
-      logger.error('MongoDB network error');
-      return retryConnection();
-    }
-
-    process.exit(1);
+    throw error;
   }
 };
 
-// Export with additional utilities for testing
 module.exports = {
   connectDB,
   mongooseOptions,
   validateMongoURI,
-  // Export for testing purposes
   _testing: {
     retryConnection,
     setupConnectionHandlers,

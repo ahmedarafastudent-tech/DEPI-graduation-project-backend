@@ -1,9 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Shipping = require('../models/shippingModel');
 
-// @desc    Create shipping method
-// @route   POST /api/shipping
-// @access  Private/Admin
+
 const createShippingMethod = asyncHandler(async (req, res) => {
   const {
     name,
@@ -29,9 +27,7 @@ const createShippingMethod = asyncHandler(async (req, res) => {
   res.status(201).json(shipping);
 });
 
-// @desc    Get all shipping methods
-// @route   GET /api/shipping
-// @access  Public
+
 const getShippingMethods = asyncHandler(async (req, res) => {
   const { region } = req.query;
   
@@ -44,9 +40,7 @@ const getShippingMethods = asyncHandler(async (req, res) => {
   res.json(shippingMethods);
 });
 
-// @desc    Get shipping method by ID
-// @route   GET /api/shipping/:id
-// @access  Private/Admin
+
 const getShippingMethodById = asyncHandler(async (req, res) => {
   const shipping = await Shipping.findById(req.params.id);
 
@@ -58,9 +52,7 @@ const getShippingMethodById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update shipping method
-// @route   PUT /api/shipping/:id
-// @access  Private/Admin
+
 const updateShippingMethod = asyncHandler(async (req, res) => {
   const shipping = await Shipping.findById(req.params.id);
 
@@ -82,9 +74,7 @@ const updateShippingMethod = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Delete shipping method
-// @route   DELETE /api/shipping/:id
-// @access  Private/Admin
+
 const deleteShippingMethod = asyncHandler(async (req, res) => {
   const shipping = await Shipping.findById(req.params.id);
 
@@ -97,9 +87,7 @@ const deleteShippingMethod = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Calculate shipping cost
-// @route   POST /api/shipping/calculate
-// @access  Public
+
 const calculateShipping = asyncHandler(async (req, res) => {
   const { weight, region, methodId } = req.body;
 

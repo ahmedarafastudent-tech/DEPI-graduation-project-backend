@@ -10,10 +10,8 @@ const {
   calculateTax,
 } = require('../controllers/taxController');
 
-// Public route for tax calculation
 router.post('/calculate', calculateTax);
 
-// Protected admin routes
 router.use(protect);
 router.use(admin);
 

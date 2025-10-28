@@ -1,0 +1,50 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 20
+      name: "Warm up phase"
+    - duration: 120
+      arrivalRate: 20
+      rampTo: 50
+      name: "Ramp up load"
+    - duration: 180
+      arrivalRate: 50
+      name: "Sustained load"
+
+scenarios:
+  - name: "Browse products"
+    flow:
+      - get:
+          url: "/api/products"
+          qs:
+            page: 1
+            limit: 20
+      - think: 2
+      - get:
+          url: "/api/products"
+          qs:
+            page: 2
+            limit: 20
+
+  - name: "Search and filter products"
+    flow:
+      - get:
+          url: "/api/products"
+          qs:
+            search: "laptop"
+            category: "electronics"
+            minPrice: 100
+            maxPrice: 1000
+      - think: 1
+      - get:
+          url: "/api/categories"
+
+  - name: "View product details"
+    flow:
+      - get:
+          url: "/api/products/{{ $randomString() }}"
+      - think: 3
+      - get:
+          url: "/api/products/{{ $randomString() }}/reviews"

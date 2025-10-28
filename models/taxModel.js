@@ -20,14 +20,12 @@ const taxSchema = mongoose.Schema({
     default: 'percentage',
   },
   isDefault: { type: Boolean, default: false },
-  // Categories that are exempt from this tax
   exemptCategories: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
     },
   ],
-  // Optional threshold below which tax does not apply
   threshold: {
     type: Number,
     required: false,
@@ -59,7 +57,6 @@ const taxSchema = mongoose.Schema({
   effectiveUntil: Date,
 });
 
-// Calculate tax for a given amount
 taxSchema.methods.calculateTax = function (
   amount,
   customerType,
@@ -71,7 +68,6 @@ taxSchema.methods.calculateTax = function (
   if (this.effectiveUntil && now > this.effectiveUntil) return 0;
   if (now < this.effectiveFrom) return 0;
 
-  // Check exemption rules
   for (const rule of this.exemptionRules) {
     switch (rule.condition) {
       case 'minimum_amount':
@@ -90,7 +86,6 @@ taxSchema.methods.calculateTax = function (
   return (amount * this.rate) / 100;
 };
 
-// Index for efficient querying
 taxSchema.index({ country: 1, state: 1, type: 1 });
 
 module.exports = mongoose.model('Tax', taxSchema);

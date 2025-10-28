@@ -1,5 +1,6 @@
-const request = require('supertest');
 const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Cart = require('../models/cartModel');
 const Product = require('../models/productModel');
 const User = require('../models/userModel');
@@ -64,7 +65,7 @@ describe('Cart Endpoints', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.items).toHaveLength(1);
-      expect(res.body.totalPrice).toBe(199.98); // 2 items at 99.99 each
+      expect(res.body.totalPrice).toBe(199.98); 
     });
   });
 

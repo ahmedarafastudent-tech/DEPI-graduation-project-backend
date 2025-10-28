@@ -2,9 +2,6 @@ const asyncHandler = require('express-async-handler');
 const SupportTicket = require('../models/supportTicketModel');
 const sendEmail = require('../utils/sendEmail');
 
-// @desc    Create support ticket
-// @route   POST /api/support
-// @access  Private
 const createTicket = asyncHandler(async (req, res) => {
   const { subject, message, priority, category, orderId } = req.body;
 
@@ -22,31 +19,27 @@ const createTicket = asyncHandler(async (req, res) => {
     relatedOrder: orderId
   });
 
-  // Send confirmation email
   try {
-    await sendEmail({
-      to: req.user.email,
-      subject: `Support Ticket Created - ${ticket._id}`,
-      html: `
+      await sendEmail({
+        to: req.user.email,
+        subject: `Support Ticket Created - ${ticket._id}`,
+        html: `
         <h1>Support Ticket Created</h1>
         <p>Your support ticket has been created successfully.</p>
         <p><strong>Ticket ID:</strong> ${ticket._id}</p>
         <p><strong>Subject:</strong> ${subject}</p>
         <p><strong>Priority:</strong> ${priority}</p>
+        <p>View your ticket at: <a href="${process.env.BACKEND_URL}/api/support/${ticket._id}">${process.env.BACKEND_URL}/api/support/${ticket._id}</a></p>
         <p>We will respond to your inquiry as soon as possible.</p>
       `
     });
   } catch (error) {
-    // Log the error but don't fail the request
     console.error('Failed to send confirmation email:', error);
   }
 
   res.status(201).json(ticket);
 });
 
-// @desc    Get all tickets
-// @route   GET /api/support
-// @access  Private/Admin
 const getTickets = asyncHandler(async (req, res) => {
   const { status, priority, category } = req.query;
   
@@ -63,9 +56,7 @@ const getTickets = asyncHandler(async (req, res) => {
   res.json(tickets);
 });
 
-// @desc    Get user tickets
-// @route   GET /api/support/my-tickets
-// @access  Private
+
 const getUserTickets = asyncHandler(async (req, res) => {
   const tickets = await SupportTicket.find({ user: req.user._id })
     .populate('messages.sender', 'name email isAdmin')
@@ -74,16 +65,13 @@ const getUserTickets = asyncHandler(async (req, res) => {
   res.json(tickets);
 });
 
-// @desc    Get ticket by ID
-// @route   GET /api/support/:id
-// @access  Private
+
 const getTicketById = asyncHandler(async (req, res) => {
   const ticket = await SupportTicket.findById(req.params.id)
     .populate('user', 'name email')
     .populate('messages.sender', 'name email isAdmin');
 
   if (ticket) {
-    // Check if user is authorized to view this ticket
     if (!req.user.isAdmin && ticket.user._id.toString() !== req.user._id.toString()) {
       res.status(401);
       throw new Error('Not authorized');
@@ -95,16 +83,13 @@ const getTicketById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Add message to ticket
-// @route   POST /api/support/:id/message
-// @access  Private
+
 const addMessage = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const ticket = await SupportTicket.findById(req.params.id)
     .populate('user', 'email');
 
   if (ticket) {
-    // Check if user is authorized
     if (!req.user.isAdmin && ticket.user._id.toString() !== req.user._id.toString()) {
       res.status(403);
       throw new Error('Not authorized');
@@ -119,7 +104,6 @@ const addMessage = asyncHandler(async (req, res) => {
     ticket.status = req.user.isAdmin ? ticket.status : 'awaiting_response';
     const updatedTicket = await ticket.save();
 
-    // Send email notification
     const emailRecipient = req.user.isAdmin ? ticket.user.email : process.env.SUPPORT_EMAIL;
     try {
       await sendEmail({
@@ -131,10 +115,10 @@ const addMessage = asyncHandler(async (req, res) => {
           <p><strong>Ticket ID:</strong> ${ticket._id}</p>
           <p><strong>Subject:</strong> ${ticket.subject}</p>
           <p><strong>Message:</strong> ${message}</p>
+          <p>View the full conversation at: <a href="${process.env.BACKEND_URL}/api/support/${ticket._id}">${process.env.BACKEND_URL}/api/support/${ticket._id}</a></p>
         `
       });
     } catch (error) {
-      // Log the error but don't fail the request
       console.error('Failed to send notification email:', error);
     }
 
@@ -145,9 +129,7 @@ const addMessage = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update ticket status
-// @route   PUT /api/support/:id/status
-// @access  Private/Admin
+
 const updateTicketStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   const ticket = await SupportTicket.findById(req.params.id)
@@ -157,7 +139,6 @@ const updateTicketStatus = asyncHandler(async (req, res) => {
     ticket.status = status;
     const updatedTicket = await ticket.save();
 
-    // Send email notification
     try {
       await sendEmail({
         to: ticket.user.email,
@@ -171,7 +152,6 @@ const updateTicketStatus = asyncHandler(async (req, res) => {
         `
       });
     } catch (error) {
-      // Log the error but don't fail the request
       console.error('Failed to send status update email:', error);
     }
 
@@ -182,9 +162,7 @@ const updateTicketStatus = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update ticket priority
-// @route   PUT /api/support/:id/priority
-// @access  Private/Admin
+
 const updateTicketPriority = asyncHandler(async (req, res) => {
   const { priority } = req.body;
   const ticket = await SupportTicket.findById(req.params.id);

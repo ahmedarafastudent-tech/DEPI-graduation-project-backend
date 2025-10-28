@@ -1,5 +1,6 @@
-const request = require('supertest');
 const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
 const User = require('../models/userModel');
@@ -69,7 +70,7 @@ describe('Order Endpoints', () => {
         .send({
           orderItems: [
             {
-              product: '507f1f77bcf86cd799439011', // Invalid ID
+              product: '507f1f77bcf86cd799439011', 
               qty: 2,
             },
           ],
@@ -132,6 +133,9 @@ describe('Order Endpoints', () => {
     });
 
     it('should get all orders for user', async () => {
+      const userOrders = await Order.find({ user: user._id });
+      expect(userOrders).toHaveLength(2);
+      
       const res = await request(app)
         .get('/api/orders/myorders')
         .set('Authorization', `Bearer ${token}`);

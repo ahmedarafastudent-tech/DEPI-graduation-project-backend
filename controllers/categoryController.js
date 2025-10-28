@@ -8,7 +8,6 @@ const getCategories = asyncHandler(async (req, res) => {
   const categories = await Category.find({}).populate('subcategories');
 
   if (includeCounts) {
-    // Attach productCount for each category
     const result = await Promise.all(
       categories.map(async (cat) => {
         const count = await Product.countDocuments({ category: cat._id });
@@ -29,7 +28,6 @@ const createCategory = asyncHandler(async (req, res) => {
     throw new AppError('Name is required', 400);
   }
 
-  // Prevent duplicates
   const exists = await Category.findOne({ name: name.trim() });
   if (exists) {
     throw new AppError('Category already exists', 400);
@@ -51,11 +49,9 @@ const updateCategory = asyncHandler(async (req, res) => {
 
   const { name, description, image, isActive } = req.body;
   if (name) {
-    // Prevent duplicate names
     const dup = await Category.findOne({ name: name.trim(), _id: { $ne: category._id } });
     if (dup) throw new AppError('Category with that name already exists', 400);
     category.name = name.trim();
-    // update slug now that name changed
     category.slug = name
       .toString()
       .trim()

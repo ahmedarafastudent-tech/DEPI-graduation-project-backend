@@ -1,10 +1,63 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const { body } = require('express-validator');
+const sanitizeHTML = require('sanitize-html');
+const isValidEmail = require('validator/lib/isEmail');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cors = require('cors');
-const { notFound, errorHandler } = require('./middleware/errorMiddleware');
-const db = require('./config/db');
+const morganLogger = require('./middleware/morganLogger');
+
+dotenv.config();
+
+// Create Express app
+const app = express();
+
+// Ensure correct client IP behind proxies and set BEFORE security middlewares
+app.set('trust proxy', true);
+
+// --------------------------
+// Consolidated security setup
+// --------------------------
+const securityMiddleware = require('./middleware/security');
+securityMiddleware(app);
+// --------------------------
+
+// Body Parser
+app.use(express.json({ limit: '10kb' })); // Body limit is 10kb
+app.use(morganLogger);
+
+// --- Added: safe test-only rate limiter reset helper ---
+// Expose a helper to reset the rate limiter (used by tests to avoid bleed).
+// This is a no-op in production and only manipulates in-memory tracking used
+// by the test harness or in-memory rate-limit implementations.
+app.resetRateLimit = async () => {
+  try {
+    if (process.env.NODE_ENV !== 'test') return;
+
+    // If the security middleware stored rate limiters on app.locals, clear them.
+    if (app.locals && app.locals.rateLimiters) {
+      // Each limiter may expose `resetAll` or similar — call if present.
+      for (const limiter of app.locals.rateLimiters) {
+        if (typeof limiter.resetAll === 'function') {
+          try { limiter.resetAll(); } catch (_) {}
+        } else if (limiter && limiter.store && typeof limiter.store.clear === 'function') {
+          try { limiter.store.clear(); } catch (_) {}
+        }
+      }
+      // Also clear any generic tracking object used by tests
+      app.locals.rateLimitTracking = {};
+    }
+  } catch (err) {
+    // swallow errors to avoid affecting test cleanup
+    // eslint-disable-next-line no-console
+    console.warn('app.resetRateLimit: cleanup failed', err.message || err);
+  }
+};
+// --- end added helper ---
+
+// Import route modules and error handlers
+// (kept here to ensure security middleware is initialized before routes)
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -21,48 +74,13 @@ const couponRoutes = require('./routes/couponRoutes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const taxRoutes = require('./routes/taxRoutes');
 
-dotenv.config();
-// Connect to DB only when not running tests. Tests use an in-memory MongoDB.
-if (process.env.NODE_ENV !== 'test') {
-  db.connectDB();
-}
+const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+const db = require('./config/db');
 
-const app = express();
-
-// Security Headers
-app.use(helmet());
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
-
-// CORS
-app.use(
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Content-Range', 'X-Total-Count'],
-    credentials: true,
-    maxAge: 600, // 10 minutes
-  })
-);
-
-// Body Parser
-app.use(express.json({ limit: '10kb' })); // Body limit is 10kb
-
-// Rate Limiting
-const createLimiter = () =>
-  rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 50, // limit each IP to 50 requests per windowMs (tests expect this)
-  });
-
-let limiter = createLimiter();
-// Always enable the rate limiter; tests rely on it and we reset it between tests by swapping middleware
-app.use('/api', (req, res, next) => limiter(req, res, next));
+// Environment helpers used on startup logging
+const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -85,25 +103,58 @@ app.use('/api/tax', taxRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+// Start server and connect DB only when this file is run directly (not required by tests)
+if (require.main === module) {
+  const validateEnv = require('./config/validateEnv');
+  (async () => {
+    try {
+      // Log resolved URLs (useful for deployment verification)
+      console.log('\nResolved URLs:');
+      console.log('- Frontend:', FRONTEND_URL);
+      console.log('- Backend:', BACKEND_URL);
+      if (process.env.CORS_ORIGINS) {
+        console.log('- CORS Origins:', process.env.CORS_ORIGINS.split(',').join(', '));
+      }
+      // Validate critical environment variables in production
+      validateEnv();
+      await db.connectDB();
 
-// Start server only when this file is run directly (not required by tests)
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () =>
-    console.log(`Server running on http://localhost:${PORT}`)
-  );
+      // Start server
+      app.listen(PORT, () => console.log(`Server running on ${BACKEND_URL}`));
+    } catch (err) {
+      console.error('Startup failed:', err.message || err);
+      process.exit(1);
+    }
+  })();
 }
 
-// Expose a helper to reset the rate limiter (used by tests to avoid bleed)
-app.resetRateLimit = () => {
+// Graceful shutdown helper
+async function cleanup() {
   try {
-    // recreate the limiter instance so the internal store is fresh
-    limiter = createLimiter();
-  } catch (err) {
-    // no-op
-  }
-};
+    // Reset rate limiters
+    if (app.resetRateLimit) {
+      await app.resetRateLimit();
+    }
 
-// Export the app and also attach it as a property to support different import styles in tests
+    // Close any other open resources
+    // Add any additional cleanup here
+  } catch (err) {
+    console.error('Cleanup error:', err);
+  }
+}
+
+// Handle process termination gracefully
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received. Cleaning up...');
+  await cleanup();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received. Cleaning up...');
+  await cleanup();
+  process.exit(0);
+});
+
+// Export the app and cleanup for testing
 module.exports = app;
-module.exports.app = app;

@@ -2,11 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Coupon = require('../models/couponModel');
 const AppError = require('../utils/appError');
 
-// @desc    Create a new coupon
-// @route   POST /api/coupons
-// @access  Private/Admin
 const createCoupon = asyncHandler(async (req, res) => {
-  // Check admin status
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as an admin', 401);
   }
@@ -23,18 +19,15 @@ const createCoupon = asyncHandler(async (req, res) => {
     description
   } = req.body;
 
-  // Basic validation
   if (!code || !type || !value) {
     throw new AppError('Please provide code, type and value for the coupon', 400);
   }
 
-  // Check if coupon code already exists
   const couponExists = await Coupon.findOne({ code: code.toUpperCase() });
   if (couponExists) {
     throw new AppError('Coupon code already exists', 400);
   }
 
-  // Validate coupon type and value
   if (type !== 'percentage' && type !== 'fixed') {
     throw new AppError('Coupon type must be either percentage or fixed', 400);
   }
@@ -47,7 +40,6 @@ const createCoupon = asyncHandler(async (req, res) => {
     throw new AppError('Fixed discount value must be greater than 0', 400);
   }
 
-  // Validate dates
   const now = new Date();
   const start = startDate ? new Date(startDate) : now;
   const end = endDate ? new Date(endDate) : null;
@@ -56,7 +48,6 @@ const createCoupon = asyncHandler(async (req, res) => {
     throw new AppError('End date must be after start date', 400);
   }
 
-  // Validate minPurchase and maxDiscount if provided
   if (minPurchase && minPurchase < 0) {
     throw new AppError('Minimum purchase amount cannot be negative', 400);
   }
@@ -82,21 +73,16 @@ const createCoupon = asyncHandler(async (req, res) => {
   res.status(201).json(coupon);
 });
 
-// @desc    Get all coupons
-// @route   GET /api/coupons
-// @access  Private/Admin
+
 const getCoupons = asyncHandler(async (req, res) => {
-  // Check admin status
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as an admin', 401);
   }
 
-  // Add pagination
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // Add filtering
   const filter = {};
   if (req.query.isActive) {
     filter.isActive = req.query.isActive === 'true';
@@ -112,16 +98,12 @@ const getCoupons = asyncHandler(async (req, res) => {
   res.json(coupons);
 });
 
-// @desc    Get coupon by ID
-// @route   GET /api/coupons/:id
-// @access  Private/Admin
+
 const getCouponById = asyncHandler(async (req, res) => {
-  // Check admin status
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as an admin', 401);
   }
 
-  // Validate ID format
   if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
     throw new AppError('Invalid coupon ID', 400);
   }
@@ -135,16 +117,12 @@ const getCouponById = asyncHandler(async (req, res) => {
   res.json(coupon);
 });
 
-// @desc    Update coupon
-// @route   PUT /api/coupons/:id
-// @access  Private/Admin
+
 const updateCoupon = asyncHandler(async (req, res) => {
-  // Check admin status
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as an admin', 401);
   }
 
-  // Validate ID format
   if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
     throw new AppError('Invalid coupon ID', 400);
   }
@@ -155,7 +133,6 @@ const updateCoupon = asyncHandler(async (req, res) => {
     throw new AppError('Coupon not found', 404);
   }
 
-  // If updating code, check if new code already exists
   if (req.body.code && req.body.code.toUpperCase() !== coupon.code) {
     const existingCoupon = await Coupon.findOne({ code: req.body.code.toUpperCase() });
     if (existingCoupon) {
@@ -163,7 +140,6 @@ const updateCoupon = asyncHandler(async (req, res) => {
     }
   }
 
-  // Validate type and value if being updated
   if (req.body.type && !['percentage', 'fixed'].includes(req.body.type)) {
     throw new AppError('Coupon type must be either percentage or fixed', 400);
   }
@@ -177,7 +153,6 @@ const updateCoupon = asyncHandler(async (req, res) => {
     }
   }
 
-  // Update fields
   coupon.code = req.body.code?.toUpperCase() || coupon.code;
   coupon.type = req.body.type || coupon.type;
   coupon.value = req.body.value || coupon.value;
@@ -189,7 +164,6 @@ const updateCoupon = asyncHandler(async (req, res) => {
   coupon.description = req.body.description || coupon.description;
   coupon.isActive = req.body.isActive !== undefined ? req.body.isActive : coupon.isActive;
 
-  // Validate dates if being updated
   if (req.body.startDate || req.body.endDate) {
     const start = new Date(coupon.startDate);
     const end = coupon.endDate ? new Date(coupon.endDate) : null;
@@ -203,16 +177,12 @@ const updateCoupon = asyncHandler(async (req, res) => {
   res.json(updatedCoupon);
 });
 
-// @desc    Delete coupon
-// @route   DELETE /api/coupons/:id
-// @access  Private/Admin
+
 const deleteCoupon = asyncHandler(async (req, res) => {
-  // Check admin status
   if (!req.user.isAdmin) {
     throw new AppError('Not authorized as an admin', 401);
   }
 
-  // Validate ID format
   if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
     throw new AppError('Invalid coupon ID', 400);
   }
@@ -230,13 +200,9 @@ const deleteCoupon = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Validate coupon
-// @route   POST /api/coupons/validate
-// @access  Private
 const validateCoupon = asyncHandler(async (req, res) => {
   const { code, cartTotal } = req.body;
 
-  // Basic validation
   if (!code || !cartTotal) {
     throw new AppError('Please provide coupon code and cart total', 400);
   }
@@ -253,12 +219,10 @@ const validateCoupon = asyncHandler(async (req, res) => {
     throw new AppError('Invalid or expired coupon', 404);
   }
 
-  // Check minimum purchase requirement
   if (coupon.minPurchase && cartTotal < coupon.minPurchase) {
     throw new AppError(`Minimum purchase amount of ${coupon.minPurchase} required`, 400);
   }
 
-  // Check if coupon has reached max uses
   if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
     throw new AppError('Coupon has reached maximum usage limit', 400);
   }
@@ -267,7 +231,6 @@ const validateCoupon = asyncHandler(async (req, res) => {
     throw new AppError(`Minimum purchase amount of ${coupon.minimumPurchase} required`, 400);
   }
 
-  // Calculate discount
   let calculatedDiscount = 0;
   if (coupon.type === 'percentage') {
     calculatedDiscount = (cartTotal * coupon.value) / 100;
@@ -275,12 +238,10 @@ const validateCoupon = asyncHandler(async (req, res) => {
     calculatedDiscount = coupon.value;
   }
 
-  // Apply maximum discount limit if set
   if (coupon.maxDiscount && calculatedDiscount > coupon.maxDiscount) {
     calculatedDiscount = coupon.maxDiscount;
   }
 
-  // Ensure discount doesn't exceed cart total
   if (calculatedDiscount > cartTotal) {
     calculatedDiscount = cartTotal;
   }
@@ -298,11 +259,7 @@ const validateCoupon = asyncHandler(async (req, res) => {
 
 });
 
-/**
- * @desc    Apply coupon to cart
- * @route   POST /api/coupons/:id/apply
- * @access  Private
- */
+
 const applyCouponToCart = asyncHandler(async (req, res) => {
   const coupon = await Coupon.findById(req.params.id);
   const { cartTotal } = req.body;
@@ -311,7 +268,6 @@ const applyCouponToCart = asyncHandler(async (req, res) => {
     throw new AppError('Coupon not found', 404);
   }
 
-  // Validate coupon is active and not expired
   if (!coupon.isActive) {
     throw new AppError('Coupon is not active', 400);
   }
@@ -325,7 +281,6 @@ const applyCouponToCart = asyncHandler(async (req, res) => {
     throw new AppError('Coupon has expired', 400);
   }
 
-  // Validate usage and purchase requirements
   if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
     throw new AppError('Coupon has reached maximum usage limit', 400);
   }
@@ -334,7 +289,6 @@ const applyCouponToCart = asyncHandler(async (req, res) => {
     throw new AppError(`Minimum purchase amount of $${coupon.minPurchase} required`, 400);
   }
 
-  // Calculate discount
   let calculatedDiscount = coupon.type === 'percentage' 
     ? (cartTotal * coupon.value) / 100 
     : coupon.value;
@@ -347,7 +301,6 @@ const applyCouponToCart = asyncHandler(async (req, res) => {
     calculatedDiscount = cartTotal;
   }
 
-  // Increment usage count
   coupon.usedCount += 1;
   await coupon.save();
 

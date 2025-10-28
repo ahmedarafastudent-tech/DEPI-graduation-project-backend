@@ -5,9 +5,6 @@ const Product = require('../models/productModel');
 const recalcTotal = (items) =>
   items.reduce((sum, it) => sum + it.price * it.qty, 0);
 
-// @desc get current user's cart
-// @route GET /api/cart
-// @access Private
 const getCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: req.user._id }).populate(
     'items.product',
@@ -17,9 +14,7 @@ const getCart = asyncHandler(async (req, res) => {
   res.json(cart);
 });
 
-// @desc add/update an item in cart
-// @route POST /api/cart
-// @access Private
+
 const addItem = asyncHandler(async (req, res) => {
   const { product: productId, qty } = req.body;
   if (!productId || !qty) {
@@ -54,16 +49,12 @@ const addItem = asyncHandler(async (req, res) => {
   }
 
   cart.totalPrice = recalcTotal(cart.items);
-  // Round total price to 2 decimals to avoid floating point issues
   cart.totalPrice = Number(cart.totalPrice.toFixed(2));
   await cart.save();
 
   res.status(200).json(cart);
 });
 
-// @desc update item qty
-// @route PUT /api/cart/item/:productId
-// @access Private
 const updateItemQty = asyncHandler(async (req, res) => {
   const { qty } = req.body;
   const { productId } = req.params;
@@ -91,9 +82,7 @@ const updateItemQty = asyncHandler(async (req, res) => {
   res.json(cart);
 });
 
-// @desc remove item from cart
-// @route DELETE /api/cart/item/:productId
-// @access Private
+
 const removeItem = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const cart = await Cart.findOne({ user: req.user._id });
@@ -109,9 +98,7 @@ const removeItem = asyncHandler(async (req, res) => {
   res.json(cart);
 });
 
-// @desc clear cart
-// @route DELETE /api/cart
-// @access Private
+
 const clearCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: req.user._id });
   if (!cart) return res.status(200).json({ message: 'Cart cleared' });

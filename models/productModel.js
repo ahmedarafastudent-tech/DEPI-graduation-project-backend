@@ -6,12 +6,17 @@ const reviewSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true
     },
     name: { type: String, required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, required: true },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
 
 const variantSchema = mongoose.Schema({
@@ -85,7 +90,6 @@ const inventoryHistorySchema = mongoose.Schema({
 
 const productSchema = mongoose.Schema(
   {
-    // Allow tests to provide either `user` or `seller` and accept a plain string category.
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -108,7 +112,6 @@ const productSchema = mongoose.Schema(
       required: false,
       default: 0,
     },
-    // tests expect a `price` field
     price: {
       type: Number,
       required: false,
@@ -117,10 +120,9 @@ const productSchema = mongoose.Schema(
     images: [
       {
         url: String,
-        publicId: String, // For cloud storage reference
+        publicId: String, 
       },
     ],
-    // Accept either an ObjectId or a simple string category (tests sometimes send strings)
     category: {
       type: mongoose.Schema.Types.Mixed,
       ref: 'Category',
@@ -147,7 +149,6 @@ const productSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
-    // (duplicate seller removed above)
     isFeatured: {
       type: Boolean,
       default: false,
@@ -217,7 +218,6 @@ const productSchema = mongoose.Schema(
   }
 );
 
-// Virtual for calculating total inventory across all variants
 productSchema.virtual('totalInventory').get(function () {
   return this.variants.reduce(
     (total, variant) => total + variant.countInStock,
@@ -225,12 +225,10 @@ productSchema.virtual('totalInventory').get(function () {
   );
 });
 
-// Method to check if product is low in stock
 productSchema.methods.isLowStock = function () {
   return this.totalInventory <= this.lowStockAlert.threshold;
 };
 
-// Method to adjust inventory
 productSchema.methods.adjustInventory = async function (
   variantId,
   quantity,
@@ -261,7 +259,6 @@ productSchema.methods.adjustInventory = async function (
   return variant.countInStock;
 };
 
-// Auto-generate SKU if missing before validation
 productSchema.pre('validate', function (next) {
   if (!this.sku) {
     const base = this.name
@@ -273,7 +270,6 @@ productSchema.pre('validate', function (next) {
     const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
     this.sku = `${base}-${rand}`;
   }
-  // if tests provided `user` but not `seller`, map it
   if (!this.seller && this.user) {
     this.seller = this.user;
   }

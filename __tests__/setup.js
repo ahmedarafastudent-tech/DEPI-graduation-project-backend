@@ -1,54 +1,113 @@
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 const supertest = require('supertest');
-const app = require('../index');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { faker } = require('@faker-js/faker');
 const User = require('../models/userModel');
+const { createUserAndToken, createProduct } = require('./testUtils');
+const redisMock = require('./mocks/redisMock');
+
+global.createUserAndToken = createUserAndToken;
+global.createProduct = createProduct;
+
+
+jest.mock('redis', () => require('./mocks/redisMock'));
+jest.mock('ioredis', () => require('./mocks/redisMock'));
+
+jest.mock('../utils/sendEmail', () => require('./mocks/mailMock'));
+jest.mock('nodemailer', () => require('./mocks/mailMock'));
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'testsecret123';
+process.env.NODE_ENV = 'test';
 
 let mongoServer;
+let app;
+
+jest.setTimeout(120000); 
 
 beforeAll(async () => {
-  // Clear any existing MongoDB connections
-  await mongoose.disconnect();
-
-  // Create in-memory MongoDB instance
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-
-  // Set MongoDB options
-  const mongooseOpts = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    maxPoolSize: 10,
-  };
-
-  // Connect to in-memory database
-  await mongoose.connect(mongoUri, mongooseOpts);
-
-  // Ensure users collection is empty at the start of each test file run.
-  // We drop the collection here so tests that create users in their
-  // own beforeAll won't hit duplicate-key errors caused by users
-  // from previously-run test files sharing the same in-memory server.
   try {
-    await mongoose.connection.db.dropCollection('users');
-  } catch (err) {
-    // Ignore error if collection doesn't exist
-  }
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+      await mongoose.disconnect();
+    }
 
-  // Set JWT_SECRET and NODE_ENV
-  process.env.JWT_SECRET = 'testsecret123';
-  process.env.NODE_ENV = 'test';
+    mongoServer = await MongoMemoryServer.create({
+      instance: {
+        dbName: 'jest-test-db',
+        port: 27017 + Math.floor(Math.random() * 1000),
+      }
+    });
+    const mongoUri = mongoServer.getUri();
+
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4
+    });
+
+    const expressApp = require('../index');
+    if (!expressApp) {
+      throw new Error('Failed to initialize Express app');
+    }
+    app = expressApp;
+
+    global.request = supertest(app);
+
+    await mongoose.connection.db.dropDatabase();
+
+    if (app && typeof app.resetRateLimit === 'function') {
+      await app.resetRateLimit();
+    }
+
+    const collections = mongoose.connection.collections;
+    for (const key in collections) {
+      await collections[key].deleteMany({});
+    }
+
+    if (!redisMock || typeof redisMock.reset !== 'function') {
+      throw new Error('Redis mock not properly initialized');
+    }
+    redisMock.reset();
+    
+    global.setUserData = async ({ username, email, password = 'password123' }) => {
+      const userData = {
+        username: username || faker.internet.userName(),
+        email: email || faker.internet.email(),
+        password: password,
+      };
+      
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await User.create({
+        ...userData,
+        password: hashedPassword,
+      });
+      
+      const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET || 'test-secret',
+      { expiresIn: '1h' }
+    );
+
+    return { user, token, password: userData.password };
+  };
+} catch (error) {
+  console.error('Error in test setup:', error);
+  throw error;
+}
 });
 
-// Make mongoose.Types.ObjectId callable without `new` to support tests that call
-// `mongoose.Types.ObjectId()` (older style). This wraps the class so calling it
-// as a function returns a new ObjectId instance.
+
 try {
   const ObjectIdClass = mongoose.Types.ObjectId;
   if (typeof ObjectIdClass === 'function') {
     const wrapper = function (val) {
       return new ObjectIdClass(val);
     };
-    // Preserve prototype so instanceof checks still work
     wrapper.prototype = ObjectIdClass.prototype;
     mongoose.Types.ObjectId = wrapper;
   }
@@ -56,45 +115,58 @@ try {
   // no-op
 }
 
-// Clear all test data after each test to ensure a clean slate for
-// the next test case while preserving any data created in beforeAll
-// for the current test file (prevents deleting users created in beforeAll
-// which are used to generate tokens). We skip the 'users' collection so
-// tokens generated from users created in beforeAll remain valid
-// throughout the test file. This avoids duplicate-key issues while
-// keeping per-test isolation for other collections.
 afterEach(async () => {
   const collections = mongoose.connection.collections;
   for (const key in collections) {
     const collection = collections[key];
-    // Skip deleting the users collection so that users created in a
-    // test file's beforeAll remain available throughout that file.
     if (collection.collectionName === 'users') {
       continue;
     }
     try {
-      await collection.deleteMany();
+      await collection.deleteMany({});
     } catch (err) {
       // ignore any delete errors for ephemeral collections
     }
   }
-  // Reset rate limiter counters between tests if available
+
   if (app && typeof app.resetRateLimit === 'function') {
-    app.resetRateLimit();
+    try {
+      await app.resetRateLimit();
+    } catch (err) {
+      // Log but don't fail tests due to rate limiter reset
+      // eslint-disable-next-line no-console
+      console.warn('Rate limiter reset error:', err.message || err);
+    }
   }
+
+  if (global.gc) global.gc();
 });
 
 afterAll(async () => {
-  await mongoose.connection.close();
-  await mongoServer.stop();
+  try {
+    if (app && typeof app.resetRateLimit === 'function') {
+      await app.resetRateLimit();
+    }
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.dropDatabase();
+      await mongoose.connection.close();
+      await mongoose.disconnect();
+    }
+
+    if (mongoServer) {
+      await mongoServer.stop({ doCleanup: true, force: true });
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Cleanup error:', err);
+    throw err;
+  }
 });
 
-// Global test utilities
 global.request = supertest(app);
 
-// Helper to create test user and get token
 global.createTestUser = async (isAdmin = false) => {
-  // Use a unique email per invocation to avoid duplicate key issues
   const uniqueEmail = `test+${Date.now()}-${Math.floor(
     Math.random() * 10000
   )}@example.com`;

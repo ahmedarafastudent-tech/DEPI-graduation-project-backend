@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const analyticsSchema = mongoose.Schema({
-  // tests/controllers use `eventType` and `userId` so accept those names
   eventType: {
     type: String,
     enum: [
@@ -25,7 +24,6 @@ const analyticsSchema = mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
-  // Allow arbitrary metadata (test fixtures add nested fields like `products`)
   metadata: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
@@ -35,10 +33,9 @@ const analyticsSchema = mongoose.Schema({
     default: Date.now,
   },
   session: String,
-  value: Number, // For monetary values in sales events
+  value: Number, 
 });
 
-// Index for efficient querying
 analyticsSchema.index({ eventType: 1, timestamp: -1 });
 analyticsSchema.index({ product: 1, eventType: 1 });
 analyticsSchema.index({ userId: 1, eventType: 1 });

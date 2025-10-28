@@ -95,16 +95,13 @@ const ticketSchema = mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Accept either `message` or `content` in subdocuments created by tests/clients
 ticketSchema.pre('validate', function (next) {
   if (Array.isArray(this.messages)) {
     this.messages = this.messages.map(msg => {
-      // If legacy `message` is present but `content` is not, copy it.
       if ((!msg.content || msg.content === '') && msg.message) {
         msg.content = msg.message;
       }
-      // Also ensure the legacy `message` field is populated from `content`
-      // so API responses include the `message` property for backwards compat.
+
       if ((!msg.message || msg.message === '') && msg.content) {
         msg.message = msg.content;
       }
@@ -114,7 +111,6 @@ ticketSchema.pre('validate', function (next) {
   next();
 });
 
-// Ensure API responses include legacy `message` field for compatibility.
 ticketSchema.set('toJSON', {
   transform: function (doc, ret) {
     if (Array.isArray(ret.messages)) {
@@ -127,7 +123,6 @@ ticketSchema.set('toJSON', {
   }
 });
 
-// Indexes for efficient querying
 ticketSchema.index({ user: 1, status: 1 });
 ticketSchema.index({ status: 1, priority: 1 });
 ticketSchema.index({ assignedTo: 1, status: 1 });

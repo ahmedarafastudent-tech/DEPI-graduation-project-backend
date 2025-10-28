@@ -2,14 +2,11 @@ const asyncHandler = require('express-async-handler');
 const Newsletter = require('../models/newsletterModel');
 const sendEmail = require('../utils/sendEmail');
 
-// @desc    Subscribe to newsletter
-// @route   POST /api/newsletter/subscribe
-// @access  Public
+
 const subscribe = asyncHandler(async (req, res) => {
   const { email } = req.body;
   let { preferences } = req.body;
 
-  // Normalize preferences: accept either an object { news: true } or an array ['news']
   const normalizePreferences = (p) => {
     if (!p) return [];
     if (Array.isArray(p)) return p;
@@ -34,7 +31,6 @@ const subscribe = asyncHandler(async (req, res) => {
     isSubscribed: true
   });
 
-  // Send welcome email
   await sendEmail({
     to: email,
     subject: 'Welcome to Our Newsletter',
@@ -58,9 +54,7 @@ const subscribe = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Unsubscribe from newsletter
-// @route   POST /api/newsletter/unsubscribe
-// @access  Public
+
 const unsubscribe = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -74,7 +68,6 @@ const unsubscribe = asyncHandler(async (req, res) => {
   subscriber.isSubscribed = false;
   await subscriber.save();
 
-  // Send confirmation email
   await sendEmail({
     to: email,
     subject: 'Unsubscribed from Newsletter',
@@ -92,9 +85,6 @@ const unsubscribe = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update subscription preferences
-// @route   PUT /api/newsletter/preferences
-// @access  Public
 const updatePreferences = asyncHandler(async (req, res) => {
   const { email } = req.body;
   let { preferences } = req.body;
@@ -126,17 +116,13 @@ const updatePreferences = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all subscribers
-// @route   GET /api/newsletter/subscribers
-// @access  Private/Admin
+
 const getSubscribers = asyncHandler(async (req, res) => {
   const subscribers = await Newsletter.find({});
   res.json(subscribers);
 });
 
-// @desc    Send newsletter
-// @route   POST /api/newsletter/send
-// @access  Private/Admin
+
 const sendNewsletter = asyncHandler(async (req, res) => {
   const { subject, content, preferences = [] } = req.body;
 

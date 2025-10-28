@@ -26,7 +26,6 @@ const categorySchema = mongoose.Schema(
   }
 );
 
-// Auto-generate slug and ensure isActive default
 categorySchema.pre('validate', function (next) {
   if (this.name && !this.slug) {
     this.slug = this.name
@@ -42,7 +41,6 @@ categorySchema.pre('validate', function (next) {
   next();
 });
 
-// Add slug and isActive to schema
 categorySchema.add({
   slug: { type: String, unique: false },
   isActive: { type: Boolean, default: true },

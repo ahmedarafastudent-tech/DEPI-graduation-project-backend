@@ -1,9 +1,10 @@
 // Single, consolidated payment tests that mock paytabs instance methods per-test.
 process.env.NODE_ENV = 'test';
 
-const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Order = require('../models/orderModel');
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/generateToken');
@@ -15,7 +16,6 @@ describe('Payment Controller Tests', () => {
   let userToken;
 
   beforeAll(async () => {
-    // Create two users used by tests
     user = await User.create({ name: 'Test User', email: 'user@test.com', password: 'Password123!' });
     otherUser = await User.create({ name: 'Other User', email: 'other@test.com', password: 'Password123!' });
     userToken = generateToken(user._id);
@@ -42,13 +42,12 @@ describe('Payment Controller Tests', () => {
     });
 
     it('should create a payment page', async () => {
-      // Mock the createPaymentPage to return expected data
       paytabs.instance.createPaymentPage = jest.fn().mockResolvedValueOnce({ tran_ref: 'test_transaction_ref', payment_url: 'https://pay.test' });
 
       const res = await request(app)
         .post('/api/payments/create-payment')
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ orderId: testOrder._id.toString(), returnUrl: 'http://localhost/success' });
+  .send({ orderId: testOrder._id.toString(), returnUrl: 'http://localhost:3000/success' });
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('payment_url');
@@ -60,7 +59,7 @@ describe('Payment Controller Tests', () => {
       const res = await request(app)
         .post('/api/payments/create-payment')
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ orderId: new mongoose.Types.ObjectId().toString(), returnUrl: 'http://localhost/success' });
+  .send({ orderId: new mongoose.Types.ObjectId().toString(), returnUrl: 'http://localhost:3000/success' });
 
       expect(res.status).toBe(404);
     });
@@ -77,7 +76,7 @@ describe('Payment Controller Tests', () => {
       const res = await request(app)
         .post('/api/payments/create-payment')
         .set('Authorization', `Bearer ${otherToken}`)
-        .send({ orderId: userOrder._id.toString(), returnUrl: 'http://localhost/success' });
+  .send({ orderId: userOrder._id.toString(), returnUrl: 'http://localhost:3000/success' });
 
       expect(res.status).toBe(403);
     });

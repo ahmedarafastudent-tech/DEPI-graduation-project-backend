@@ -3,9 +3,6 @@ const Return = require('../models/returnModel');
 const Order = require('../models/orderModel');
 const sendEmail = require('../utils/sendEmail');
 
-// @desc    Create return request
-// @route   POST /api/returns
-// @access  Private
 const createReturn = asyncHandler(async (req, res) => {
   const {
     orderId,
@@ -20,7 +17,6 @@ const createReturn = asyncHandler(async (req, res) => {
     throw new Error('Order not found');
   }
 
-  // Validate return eligibility
   const orderDate = new Date(order.createdAt);
   const currentDate = new Date();
   const daysSinceOrder = Math.floor((currentDate - orderDate) / (1000 * 60 * 60 * 24));
@@ -40,7 +36,6 @@ const createReturn = asyncHandler(async (req, res) => {
     createdAt: currentDate
   });
 
-  // Send email notification
   await sendEmail({
     to: req.user.email,
     subject: 'Return Request Received',
@@ -56,9 +51,7 @@ const createReturn = asyncHandler(async (req, res) => {
   res.status(201).json(returnRequest);
 });
 
-// @desc    Get all returns
-// @route   GET /api/returns
-// @access  Private/Admin
+
 const getReturns = asyncHandler(async (req, res) => {
   const { status } = req.query;
   
@@ -75,9 +68,7 @@ const getReturns = asyncHandler(async (req, res) => {
   res.json(returns);
 });
 
-// @desc    Get user returns
-// @route   GET /api/returns/my-returns
-// @access  Private
+
 const getUserReturns = asyncHandler(async (req, res) => {
   const returns = await Return.find({ user: req.user._id })
     .populate('order')
@@ -86,16 +77,12 @@ const getUserReturns = asyncHandler(async (req, res) => {
   res.json(returns);
 });
 
-// @desc    Get return by ID
-// @route   GET /api/returns/:id
-// @access  Private
 const getReturnById = asyncHandler(async (req, res) => {
   const returnRequest = await Return.findById(req.params.id)
     .populate('user', 'name email')
     .populate('order');
 
   if (returnRequest) {
-    // Check if the user is authorized to view this return
     if (!req.user.isAdmin && returnRequest.user._id.toString() !== req.user._id.toString()) {
       res.status(401);
       throw new Error('Not authorized');
@@ -107,9 +94,7 @@ const getReturnById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update return status
-// @route   PUT /api/returns/:id
-// @access  Private/Admin
+
 const updateReturnStatus = asyncHandler(async (req, res) => {
   const { status, adminNotes } = req.body;
 
@@ -124,7 +109,6 @@ const updateReturnStatus = asyncHandler(async (req, res) => {
 
     const updatedReturn = await returnRequest.save();
 
-    // Send email notification (be defensive if order not populated)
     const orderIdForEmail =
       returnRequest.order && returnRequest.order._id
         ? returnRequest.order._id

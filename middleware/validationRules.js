@@ -2,7 +2,23 @@ const { body, param, query } = require('express-validator');
 const mongoose = require('mongoose');
 const path = require('path');
 
-// Enhanced Validation and Security Helpers
+
+const createProductValidation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Product name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be 2-100 chars'),
+  body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('category')
+    .notEmpty()
+    .withMessage('Category is required')
+    .isMongoId()
+    .withMessage('Invalid category ID'),
+];
+
+
 const isValidObjectId = (value) => {
   try {
     return (
@@ -22,18 +38,16 @@ const sanitizeHTML = (value) => {
     .replace(/[<>]/g, '')
     .replace(/javascript:/gi, '')
     .replace(/on\w+\s*=/gi, '')
-    .replace(/data:/gi, '') // Remove data URLs
-    .replace(/vbscript:/gi, '') // Remove VBScript
-    .replace(/expression\s*\(/gi, '') // Remove CSS expressions
-    .replace(/url\s*\(/gi, '') // Remove CSS URLs
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '') 
+    .replace(/expression\s*\(/gi, '') 
+    .replace(/url\s*\(/gi, '') 
     .trim();
 };
 
 const sanitizeFile = (value) => {
   if (!value) return value;
-  // Remove path traversal and normalize
   const sanitized = path.normalize(value).replace(/^(\.\.[\/\\])+/, '');
-  // Only allow specific file extensions
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
   if (!allowedExtensions.includes(path.extname(sanitized).toLowerCase())) {
     return '';
@@ -41,7 +55,6 @@ const sanitizeFile = (value) => {
   return sanitized;
 };
 
-// Advanced Validation Helpers
 const isValidEmail = (email) => {
   const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return pattern.test(email) && email.length <= 254;
@@ -80,7 +93,6 @@ const isSecureUrl = (url) => {
   }
 };
 
-// Common Validations
 const objectIdParam = (field) =>
   param(field).custom(isValidObjectId).withMessage('Invalid ID format');
 
@@ -88,7 +100,6 @@ const priceValidation = body('price')
   .isFloat({ min: 0 })
   .withMessage('Price must be a positive number');
 
-// Auth Validations
 const registerValidation = [
   body('name')
     .trim()
@@ -168,7 +179,6 @@ const updateProfileValidation = [
     .withMessage('Avatar must be a valid URL'),
 ];
 
-// Product Validations
 const productValidation = [
   body('name')
     .trim()
@@ -210,7 +220,6 @@ const productValidation = [
     .withMessage('Variant options must be an array'),
 ];
 
-// Category Validations
 const categoryValidation = [
   body('name')
     .trim()
@@ -229,7 +238,6 @@ const categoryValidation = [
   body('image').optional().isURL().withMessage('Image URL must be valid'),
 ];
 
-// Subcategory Validations
 const subcategoryValidation = [
   body('name')
     .trim()
@@ -247,7 +255,6 @@ const subcategoryValidation = [
     .withMessage('Description cannot exceed 500 characters'),
 ];
 
-// Order Validations
 const orderValidation = [
   body('orderItems')
     .isArray({ min: 1 })
@@ -287,7 +294,6 @@ const orderValidation = [
     .withMessage('Invalid payment method'),
 ];
 
-// Return Validations
 const returnValidation = [
   body('orderId').custom(isValidObjectId).withMessage('Invalid order ID'),
   body('items')
@@ -314,7 +320,6 @@ const returnValidation = [
     .withMessage('Comments cannot exceed 500 characters'),
 ];
 
-// Shipping Validations
 const shippingValidation = [
   body('name')
     .trim()
@@ -342,7 +347,6 @@ const shippingValidation = [
     .withMessage('Region name cannot be empty'),
 ];
 
-// Payment Validations
 const paymentValidation = {
   create: [
     body('orderId').custom(isValidObjectId).withMessage('Invalid order ID'),
@@ -362,7 +366,6 @@ const paymentValidation = {
   ],
 };
 
-// Coupon Validations
 const couponValidation = [
   body('code')
     .trim()
@@ -403,7 +406,6 @@ const couponValidation = [
     }),
 ];
 
-// Support Ticket Validations
 const supportTicketValidation = [
   body('subject')
     .trim()
@@ -441,7 +443,6 @@ const supportTicketValidation = [
     .withMessage('Attachment URL must be valid'),
 ];
 
-// Cart Validations
 const cartValidation = {
   addItem: [
     body('productId').custom(isValidObjectId).withMessage('Invalid product ID'),
@@ -460,14 +461,12 @@ const cartValidation = {
   ],
 };
 
-// Wishlist Validations
 const wishlistValidation = {
   addItem: [
     body('productId').custom(isValidObjectId).withMessage('Invalid product ID'),
   ],
 };
 
-// Newsletter Validations
 const newsletterValidation = {
   subscribe: [
     body('email')
@@ -492,7 +491,6 @@ const newsletterValidation = {
   ],
 };
 
-// Tax Validations
 const taxValidation = [
   body('name')
     .trim()

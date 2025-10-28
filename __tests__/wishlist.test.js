@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Wishlist = require('../models/wishlistModel');
 const Product = require('../models/productModel');
 const User = require('../models/userModel');
@@ -14,7 +15,6 @@ describe('Wishlist Controller Tests', () => {
   let seller;
 
   beforeAll(async () => {
-    // Create main test user
     user = await User.create({
       name: 'Test User',
       email: 'testuser@example.com',
@@ -23,7 +23,6 @@ describe('Wishlist Controller Tests', () => {
     });
     token = generateToken(user._id);
 
-    // Create seller user
     seller = await User.create({
       name: 'Test Seller',
       email: 'seller@example.com',
@@ -31,7 +30,6 @@ describe('Wishlist Controller Tests', () => {
       isAdmin: false
     });
 
-    // Clear any existing wishlists
     await Wishlist.deleteMany({});
     await Product.deleteMany({});
   });
@@ -39,7 +37,6 @@ describe('Wishlist Controller Tests', () => {
   beforeEach(async () => {
     await Wishlist.deleteMany({});
 
-    // Create test product with required fields for each test
     product = await Product.create({
       name: 'Test Product',
       description: 'Test Description',

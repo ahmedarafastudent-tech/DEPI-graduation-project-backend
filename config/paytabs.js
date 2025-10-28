@@ -9,7 +9,6 @@ const paytabsConfig = {
   currency: process.env.PAYTABS_CURRENCY || 'EGP',
 };
 
-// In test environment, export a lightweight stub to avoid real network calls
 if (process.env.NODE_ENV === 'test') {
   const instance = {
     createPaymentPage: async (payload) => ({
@@ -43,7 +42,6 @@ if (process.env.NODE_ENV === 'test') {
   },
 });
 
-// Provide an `instance` wrapper with named methods so tests can mock them easily
 const instance = {
   createPaymentPage: async (payload) => {
     const res = await paytabsClient.post('/', payload);

@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Shipping = require('../models/shippingModel');
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/generateToken');
@@ -180,7 +181,7 @@ describe('Shipping Controller Tests', () => {
         });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.cost).toBe(9); // baseRate(5) + weight(2) * ratePerKg(2)
+      expect(res.body.cost).toBe(9); 
     });
 
     it('should return 404 for invalid shipping method', async () => {

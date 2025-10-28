@@ -1,6 +1,7 @@
-const request = require('supertest');
 const mongoose = require('mongoose');
-const { app } = require('../index');
+const app = require('../index');
+const supertest = require('supertest');
+const request = (appParam) => global.request || supertest(appParam);
 const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/generateToken');
@@ -137,8 +138,8 @@ describe('Coupon Controller Tests', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.valid).toBe(true);
-      expect(res.body.coupon.discountAmount).toBe(40); // 20% of 200
-      expect(res.body.coupon.finalTotal).toBe(160); // 200 - 40
+      expect(res.body.coupon.discountAmount).toBe(40); 
+      expect(res.body.coupon.finalTotal).toBe(160);
     });
 
     it('should reject invalid coupon code', async () => {
@@ -159,7 +160,7 @@ describe('Coupon Controller Tests', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           code: 'VALID20',
-          cartTotal: 50 // Below minPurchase of 100
+          cartTotal: 50 
         });
 
       expect(res.statusCode).toBe(400);
