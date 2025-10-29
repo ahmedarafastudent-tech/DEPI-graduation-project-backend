@@ -1,0 +1,15 @@
+[
+  {
+    "user": "",
+    "orderItems": [
+      { "name": "Wireless Headphones", "qty": 1, "image": "", "price": 99.99, "product": "" }
+    ],
+    "shippingAddress": { "address": "123 Main St", "city": "Cairo", "postalCode": "11511", "country": "Egypt" },
+    "paymentMethod": "PayTabs",
+    "itemsPrice": 99.99,
+    "taxPrice": 5.0,
+    "shippingPrice": 10.0,
+    "totalPrice": 114.99,
+    "isPaid": false
+  }
+]

@@ -78,6 +78,61 @@
    - In development: Configure SMTP or use a service like Mailtrap
    - Check `utils/sendEmail.js` for implementation details
 
+### Seeding / Importing Sample Data (MongoDB)
+
+If you want to quickly populate your local MongoDB (or import via MongoDB Compass) the repository includes a small seeder and JSON sample files.
+
+- Run the seeder script (will clear a few collections and insert sample data):
+
+```bash
+# Ensure your `.env` has `MONGO_URI` pointing to your local DB
+npm run seed
+```
+
+- Import with MongoDB Compass (if you prefer GUI):
+  1. Open MongoDB Compass and connect to your local instance.
+  2. Select the target database (or create one).
+  3. Use "Add Data" → "Import File" and choose one of the JSON files under `scripts/seed-data/` (`users.json`, `categories.json`, `products.json`).
+  4. After importing categories and users, you can either run the seeder script to create relations (recommended) or manually update product `category` and `user` fields with inserted ObjectIds.
+
+- Files included for Compass import:
+  - `scripts/seed-data/users.json` — sample users
+  - `scripts/seed-data/categories.json` — sample categories
+  - `scripts/seed-data/products.json` — sample products
+
+Notes:
+- The seeder (`scripts/seed.js`) uses the project models so pre-save hooks run (password hashing, slug generation, SKU generation, etc.).
+- The seeder clears `users`, `categories`, `products`, and `orders` collections before inserting sample data. Use with caution on non-development databases.
+- If you import via Compass, password fields will be plain text and won't be hashed unless you create users via the seeder or through the API.
+
+### API response format
+
+All API responses use a consistent JSON structure so frontends can handle success and error cases uniformly.
+
+Success example:
+```json
+{
+  "success": true,
+  "data": { /* resource payload or null */ },
+  "message": "Optional human-readable message"
+}
+```
+
+Error example:
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "details": { /* optional validation info */ }
+}
+```
+
+### Email behavior (dev vs test)
+
+- In `NODE_ENV=test` the email sending utility is mocked. Tests assert behavior by checking logs or mock return values; no SMTP connection is used.
+- In development/production provide SMTP credentials in `.env` (see `.env.example` or `.env.sample`). The `sendEmail` helper returns an object like `{ success: true, info }` on success.
+- Email links for verification and password reset are built using `FRONTEND_URL` and expect frontend routes `/verify-email/:token` and `/reset-password/:token`.
+
 ### For Frontend Developers
 
 1. Base URL & CORS:

@@ -1,0 +1,4 @@
+[
+  { "eventType": "product_view", "product": "", "userId": "" },
+  { "eventType": "product_purchase", "product": "", "userId": "", "value": 99.99 }
+]

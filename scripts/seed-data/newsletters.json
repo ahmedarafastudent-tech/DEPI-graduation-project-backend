@@ -1,0 +1,4 @@
+[
+  { "email": "newsletter1@example.com", "isSubscribed": true },
+  { "email": "newsletter2@example.com", "isSubscribed": true }
+]

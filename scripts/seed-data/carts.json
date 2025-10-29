@@ -1,0 +1,9 @@
+[
+  {
+    "user": "",
+    "items": [
+      { "product": "", "name": "JavaScript: The Good Parts", "qty": 2, "price": 19.99 }
+    ],
+    "totalPrice": 39.98
+  }
+]

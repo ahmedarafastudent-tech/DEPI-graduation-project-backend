@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "npm run validate:env && nodemon index.js",
+    "seed": "node scripts/seed.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

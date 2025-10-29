@@ -1,0 +1,21 @@
+[
+  {
+    "name": "Wireless Headphones",
+    "description": "Noise-cancelling wireless headphones",
+    "price": 99.99,
+    "basePrice": 120,
+    "countInStock": 25
+  },
+  {
+    "name": "JavaScript: The Good Parts",
+    "description": "A classic book about JavaScript",
+    "price": 19.99,
+    "countInStock": 100
+  },
+  {
+    "name": "Plain T-Shirt",
+    "description": "100% cotton t-shirt",
+    "price": 9.99,
+    "countInStock": 200
+  }
+]

@@ -1,0 +1,4 @@
+[
+  { "name": "Standard Shipping", "carrier": "LocalPost", "estimatedDays": "3-7", "baseRate": 5 },
+  { "name": "Express", "carrier": "FastShip", "estimatedDays": "1-2", "baseRate": 15 }
+]

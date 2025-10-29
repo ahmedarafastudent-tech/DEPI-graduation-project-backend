@@ -26,13 +26,18 @@ Content-Type: application/json
 
 Response 201:
 {
-  "_id": "user_id",
-  "name": "User Name",
-  "email": "user@example.com",
-  "token": "JWT_TOKEN",
-  "isVerified": false
+  "success": true,
+  "data": {
+    "_id": "user_id",
+    "name": "User Name",
+    "email": "user@example.com",
+    "token": "JWT_TOKEN",
+    "isVerified": false
+  },
+  "message": "User registered successfully"
 }
 ```
+
 
 #### Login
 ```http
@@ -46,11 +51,15 @@ Content-Type: application/json
 
 Response 200:
 {
-  "_id": "user_id",
-  "name": "User Name",
-  "email": "user@example.com",
-  "token": "JWT_TOKEN",
-  "isVerified": true
+  "success": true,
+  "data": {
+    "_id": "user_id",
+    "name": "User Name",
+    "email": "user@example.com",
+    "token": "JWT_TOKEN",
+    "isVerified": true
+  },
+  "message": "Authentication successful"
 }
 ```
 
@@ -65,12 +74,15 @@ Content-Type: application/json
 
 Response 200:
 {
-  "message": "Email sent",
-  "success": true
+  "success": true,
+  "message": "Password reset email sent",
+  "data": null
 }
 ```
 
 Note: In production, this endpoint sends a password reset link via email. The link includes a secure token and points to `${FRONTEND_URL}/reset-password/${token}`. The token expires in 10 minutes.
+
+In test environments (`NODE_ENV=test`) email sending is mocked and tokens are usually logged to the test output (or returned by test helpers) so you can assert their values without requiring a real SMTP server.
 
 #### Reset Password
 ```http
@@ -83,7 +95,9 @@ Content-Type: application/json
 
 Response 200:
 {
-  "message": "Password reset successful"
+  "success": true,
+  "message": "Password reset successful",
+  "data": null
 }
 ```
 
@@ -93,7 +107,9 @@ GET /api/auth/verify-email/:token
 
 Response 200:
 {
-  "message": "Email verified successfully"
+  "success": true,
+  "message": "Email verified successfully",
+  "data": null
 }
 ```
 
@@ -126,21 +142,24 @@ Note: Email verification tokens are sent during registration and expire after 24
 ### Response Format
 
 #### Success Responses
-All successful responses follow a consistent format:
+All successful responses follow a consistent format used across the API (helps frontend map responses easily):
+
 ```json
 {
   "success": true,
-  "data": {}, // Response data object
-  "message": "Optional success message"
+  "data": { /* resource payload or null */ },
+  "message": "Optional human-readable message"
 }
 ```
 
 #### Error Responses
-All errors follow this format:
+All errors follow this format. In development the `stack` field may be included for debugging; it is omitted in production responses.
+
 ```json
 {
   "success": false,
   "message": "Error description",
+  "details": { /* optional validation details */ },
   "stack": "Error stack trace (development only)"
 }
 ```
@@ -157,13 +176,12 @@ Common HTTP status codes:
 
 1. Email Behavior:
    - In test environment (`NODE_ENV=test`):
-     - Email sending is mocked
-     - `sendEmail()` returns `{ success: true }`
-     - No real SMTP connection is made
+     - Email sending is mocked by the test suite. The `sendEmail()` helper resolves with `{ success: true, info: { /* transporter info */ } }` or the tests stub the module and return predictable tokens. No SMTP connection is made.
    - In development/production:
-     - Real SMTP settings required
-     - Returns `{ success: true }` on successful send
-     - Throws error on failure
+     - Provide valid SMTP settings in `.env` (see `.env.example` / `.env.sample`).
+     - The `sendEmail()` utility returns `{ success: true, info }` on success and throws/returns an error on failure.
+   - Frontend integration:
+     - Email bodies include links built from `FRONTEND_URL` + paths `/verify-email/:token` and `/reset-password/:token`. Ensure that your frontend routes match these paths.
 
 2. Test Users:
    - Use `POST /api/auth/register` to create test users
@@ -191,6 +209,17 @@ BACKEND_URL=http://localhost:5000
 CORS_ORIGINS=http://localhost:3000
 RATE_LIMIT_MAX=100
 ```
+
+Seeding / Sample Data:
+
+- This repo includes a seeder script (`scripts/seed.js`) which populates development collections with sample users, categories, products and related data. Run it with:
+
+```bash
+# Make sure `.env` points to a local development MongoDB instance
+npm run seed
+```
+
+- There are also JSON files under `scripts/seed-data/` for manual import via MongoDB Compass. Prefer running the seeder when you need properly linked documents (hashed passwords, references, generated SKUs).
 
 ## Categories & Subcategories
 

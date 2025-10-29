@@ -1,0 +1,21 @@
+[
+  {
+    "name": "Admin User",
+    "email": "admin@example.com",
+    "password": "password123",
+    "isAdmin": true,
+    "isVerified": true
+  },
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "isVerified": true
+  },
+  {
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "password": "password123",
+    "isVerified": true
+  }
+]

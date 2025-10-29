@@ -1,0 +1,12 @@
+[
+  {
+    "code": "WELCOME10",
+    "type": "percentage",
+    "value": 10,
+    "validFrom": "2025-01-01T00:00:00.000Z",
+    "validUntil": "2026-01-01T00:00:00.000Z",
+    "minimumPurchase": 0,
+    "maxUsage": 1000,
+    "isActive": true
+  }
+]
