@@ -44,7 +44,6 @@ const orderSchema = mongoose.Schema(
     paymentMethod: {
       type: String,
       required: true,
-      // accept both lowercase and common capitalized variants used in tests
       enum: ['credit_card', 'paypal', 'PayPal', 'cod', 'bank_transfer', 'paytabs', 'Paytabs'],
     },
     paymentResult: {

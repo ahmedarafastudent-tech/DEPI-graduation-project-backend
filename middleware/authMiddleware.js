@@ -223,14 +223,12 @@ const admin = asyncHandler(async (req, res, next) => {
     role: user.role
   });
 
-  // Test environment: allow x-test-admin header and check both role & isAdmin
   if (process.env.NODE_ENV === 'test') {
     if (req.headers['x-test-admin'] || user.isAdmin || user.role === 'admin') {
       req.user.isAdmin = true;
       return next();
     }
   } else {
-    // Non-test environments: require either role='admin' or isAdmin=true
     if (user.isAdmin || user.role === 'admin') {
       req.user.isAdmin = true;
       return next();

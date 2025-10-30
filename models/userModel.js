@@ -65,7 +65,6 @@ const userSchema = mongoose.Schema(
       required: true,
       index: true
     },
-    // Backwards-compatible flag for legacy code/tests that expect isAdmin
     isAdmin: {
       type: Boolean,
       default: false,
@@ -168,7 +167,6 @@ userSchema.methods.resetLoginAttempts = async function() {
   await this.save();
 };
 
-// Ensure isAdmin flag matches role for compatibility
 userSchema.pre('save', function (next) {
   try {
     this.isAdmin = !!(this.isAdmin || this.role === 'admin');

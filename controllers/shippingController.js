@@ -90,24 +90,39 @@ const deleteShippingMethod = asyncHandler(async (req, res) => {
 
 const calculateShipping = asyncHandler(async (req, res) => {
   const { weight, region, methodId } = req.body;
-
-  const shippingMethod = await Shipping.findOne({
-    _id: methodId,
-    isActive: true,
-    regions: region
-  });
-
-  if (!shippingMethod) {
-    res.status(404);
-    throw new Error('Shipping method not available for this region');
+  if (weight === undefined || weight === null || isNaN(Number(weight))) {
+    res.status(400);
+    throw new Error('Weight is required and must be a number');
   }
 
-  if (weight < 0) {
+  if (Number(weight) < 0) {
     res.status(400);
     throw new Error('Invalid weight');
   }
 
-  const cost = shippingMethod.baseRate + (weight * shippingMethod.ratePerKg);
+  const shippingMethod = await Shipping.findById(methodId);
+
+  if (!shippingMethod || shippingMethod.isActive === false) {
+    res.status(404);
+    throw new Error('Shipping method not found');
+  }
+
+  if (shippingMethod.regions && Array.isArray(shippingMethod.regions) && shippingMethod.regions.length > 0) {
+    if (!region || !shippingMethod.regions.includes(region)) {
+      res.status(404);
+      throw new Error('Shipping method not available for this region');
+    }
+  }
+
+  const weightNum = Number(weight);
+  let cost;
+  if (typeof shippingMethod.calculateCost === 'function') {
+    cost = shippingMethod.calculateCost(weightNum, region);
+  } else {
+    const base = typeof shippingMethod.baseRate === 'number' ? shippingMethod.baseRate : (typeof shippingMethod.baseCost === 'number' ? shippingMethod.baseCost : 0);
+    const perKg = typeof shippingMethod.ratePerKg === 'number' ? shippingMethod.ratePerKg : 0;
+    cost = base + (weightNum * perKg);
+  }
 
   res.json({
     cost,

@@ -26,7 +26,6 @@ const addOrderItems = asyncHandler(async (req, res) => {
       throw new Error('Product not found');
     }
 
-    // build the order item with required fields from product
     populatedItems.push({
       name: prod.name,
       qty: item.qty,
@@ -36,7 +35,6 @@ const addOrderItems = asyncHandler(async (req, res) => {
     });
   }
 
-  // normalize payment method to match enum in model
   const normalizedPaymentMethod = paymentMethod
     ? String(paymentMethod).toLowerCase()
     : paymentMethod;
