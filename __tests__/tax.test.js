@@ -17,11 +17,9 @@ describe('Tax Controller Tests', () => {
     admin = adminUser;
     adminToken = token;
 
-    user = await User.create({
-      name: 'Test User',
-      email: 'user@example.com',
-      password: 'password123'
-    });
+    const { user: regularUser, token: regToken } = await createUserAndToken(app, { isAdmin: false });
+    user = regularUser;
+    userToken = regToken;
     userToken = generateToken(user._id);
   });
 

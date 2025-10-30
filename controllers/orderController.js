@@ -18,19 +18,34 @@ const addOrderItems = asyncHandler(async (req, res) => {
   }
 
   const Product = require('../models/productModel');
+  const populatedItems = [];
   for (const item of orderItems) {
     const prod = await Product.findById(item.product);
     if (!prod) {
       res.status(404);
       throw new Error('Product not found');
     }
+
+    // build the order item with required fields from product
+    populatedItems.push({
+      name: prod.name,
+      qty: item.qty,
+      image: prod.image || '',
+      price: prod.price,
+      product: prod._id,
+    });
   }
 
+  // normalize payment method to match enum in model
+  const normalizedPaymentMethod = paymentMethod
+    ? String(paymentMethod).toLowerCase()
+    : paymentMethod;
+
   const order = new Order({
-    orderItems,
+    orderItems: populatedItems,
     user: req.user._id,
     shippingAddress,
-    paymentMethod,
+    paymentMethod: normalizedPaymentMethod,
     itemsPrice,
     taxPrice,
     shippingPrice,

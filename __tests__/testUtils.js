@@ -17,6 +17,7 @@ async function createUserAndToken(app, { isAdmin = false, email = null, password
     name: isAdmin ? 'Admin User' : 'Test User',
     email: uniqueEmail,
     password,
+    role: isAdmin ? 'admin' : 'user',
     isAdmin,
     isVerified: true,
     sessions: [{

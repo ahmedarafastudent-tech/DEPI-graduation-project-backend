@@ -1,9 +1,9 @@
-# API Documentation
-
-## Quick Reference
-
-````markdown
 # API Documentation (Updated October 2025)
+
+## Base URLs
+- Development: `http://localhost:5000`
+- Test: Set via `BACKEND_URL` in `.env`
+- Production: Your deployed API URL
 
 ## Quick Reference
 

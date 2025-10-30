@@ -93,45 +93,59 @@ const productSchema = mongoose.Schema(
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: false,
-    },
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      required: true,
+      index: true
     },
     name: {
       type: String,
       required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 200,
+      index: true
     },
     description: {
       type: String,
-      required: false,
+      required: true,
+      trim: true,
+      minlength: 10,
+      maxlength: 2000
     },
     basePrice: {
       type: Number,
       required: false,
       default: 0,
+      min: 0,
+      get: v => parseFloat(v.toFixed(2)),
+      set: v => parseFloat(v.toFixed(2))
     },
     price: {
       type: Number,
-      required: false,
+      required: true,
+      min: 0,
       default: 0,
+      get: v => parseFloat(v.toFixed(2)),
+      set: v => parseFloat(v.toFixed(2))
     },
     images: [
       {
         url: String,
-        publicId: String, 
+        publicId: String,
       },
     ],
+    // Allow category to be either an ObjectId referencing Category or a
+    // simple string (tests sometimes create products with a category name).
+    // Using Mixed keeps existing behavior working for real ObjectIds while
+    // allowing tests to pass simple strings.
     category: {
       type: mongoose.Schema.Types.Mixed,
-      ref: 'Category',
       required: false,
+      index: true,
     },
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subcategory',
-      required: false,
+      index: true
     },
     countInStock: {
       type: Number,

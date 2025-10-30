@@ -61,13 +61,14 @@ const isValidEmail = (email) => {
 };
 
 const isValidPrice = (price) => {
-  return (
-    typeof price === 'number' &&
-    Number.isFinite(price) &&
-    price >= 0 &&
-    price <= 999999.99 &&
-    Number(price.toFixed(2)) === price
-  );
+  // Allow floating point prices but tolerate small binary rounding errors.
+  // Prefer storing prices as integer cents for reliability; this helper
+  // accepts a number and verifies it has at most 2 decimal places
+  // within a tiny floating-point tolerance.
+  if (typeof price !== 'number' || !Number.isFinite(price)) return false;
+  if (price < 0 || price > 999999.99) return false;
+  const rounded = Math.round(price * 100) / 100;
+  return Math.abs(price - rounded) < 1e-9;
 };
 const isValidDate = (date) => {
   const d = new Date(date);

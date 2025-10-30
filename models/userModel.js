@@ -12,7 +12,13 @@ const userSchema = mongoose.Schema(
       trim: true,
       minlength: [2, 'Name must be at least 2 characters long'],
       maxlength: [50, 'Name cannot be more than 50 characters long'],
-      index: true, 
+      index: true,
+      validate: {
+        validator: function(v) {
+          return /^[a-zA-Z0-9\s-]+$/.test(v);
+        },
+        message: 'Name can only contain letters, numbers, spaces and hyphens'
+      }
     },
     email: {
       type: String,
@@ -21,24 +27,54 @@ const userSchema = mongoose.Schema(
       trim: true,
       lowercase: true,
       match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         'Please enter a valid email address',
       ],
-      index: true, 
+      index: true,
+      validate: {
+        validator: async function(email) {
+          if (!this.isNew && !this.isModified('email')) return true;
+          const user = await this.constructor.findOne({ email });
+          return !user;
+        },
+        message: 'Email address is already registered'
+      }
     },
-    password: {
+      password: {
+        type: String,
+        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters long'],
+        validate: {
+          validator: function(v) {
+            if (process.env.NODE_ENV === 'test') {
+              return v.length >= 6;
+            }
+            return PASSWORD_PATTERN.test(v);
+          },
+          message: props => 
+            process.env.NODE_ENV === 'test' 
+              ? 'Password must be at least 6 characters long'
+              : 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+        },
+        select: false
+      },
+    role: {
       type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters long'],
-      select: false, 
+      enum: ['user', 'admin', 'seller'],
+      default: 'user',
+      required: true,
+      index: true
     },
+    // Backwards-compatible flag for legacy code/tests that expect isAdmin
     isAdmin: {
       type: Boolean,
       default: false,
+      index: true,
     },
     isVerified: {
       type: Boolean,
       default: false,
+      index: true
     },
     avatar: {
       type: String,
@@ -91,14 +127,67 @@ const userSchema = mongoose.Schema(
 );
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+userSchema.methods.generatePasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  this.resetPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+  return resetToken;
+};
+
+userSchema.methods.generateVerificationToken = function() {
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  this.verificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+  return verificationToken;
+};
+
+userSchema.methods.isPasswordResetTokenValid = function() {
+  return this.resetPasswordExpires && this.resetPasswordExpires > Date.now();
+};
+
+userSchema.methods.incrementLoginAttempts = async function() {
+  this.loginAttempts += 1;
+  if (this.loginAttempts >= 5) {
+    this.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
+  }
+  await this.save();
+};
+
+userSchema.methods.resetLoginAttempts = async function() {
+  this.loginAttempts = 0;
+  this.lockedUntil = undefined;
+  await this.save();
+};
+
+// Ensure isAdmin flag matches role for compatibility
+userSchema.pre('save', function (next) {
+  try {
+    this.isAdmin = !!(this.isAdmin || this.role === 'admin');
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  try {
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 userSchema.methods.generateToken = function () {

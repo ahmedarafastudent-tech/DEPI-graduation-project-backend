@@ -1,23 +1,37 @@
 const mongoose = require('mongoose');
 
 const taxSchema = mongoose.Schema({
-  name: { type: String, required: false },
+  name: { 
+    type: String, 
+    required: true,
+    trim: true,
+    index: true 
+  },
   region: {
     type: String,
     required: true,
+    trim: true,
+    index: true
   },
-  state: String,
+  state: {
+    type: String,
+    trim: true,
+    index: true
+  },
   rate: {
     type: Number,
     required: true,
     min: 0,
     max: 100,
+    get: v => parseFloat(v.toFixed(2)),
+    set: v => parseFloat(v.toFixed(2))
   },
   type: {
     type: String,
     enum: ['vat', 'sales', 'gst', 'percentage', 'flat'],
-    required: false,
+    required: true,
     default: 'percentage',
+    index: true
   },
   isDefault: { type: Boolean, default: false },
   exemptCategories: [
@@ -86,6 +100,6 @@ taxSchema.methods.calculateTax = function (
   return (amount * this.rate) / 100;
 };
 
-taxSchema.index({ country: 1, state: 1, type: 1 });
+taxSchema.index({ region: 1, state: 1, type: 1 });
 
 module.exports = mongoose.model('Tax', taxSchema);

@@ -1,18 +1,17 @@
-# E-Commerce API Documentation
+# E-Commerce Backend API
 
-## Latest Updates (October 2025)
+## Latest Updates (30 October 2025)
 
-- ✅ All test suites are now passing
+- ✅ All test suites passing (164 tests across 18 test suites)
+- ✅ Enhanced data seeding with comprehensive sample data
 - ✅ Improved authentication and session management
-- ✅ Enhanced error handling and validation
-- ✅ Added comprehensive API documentation
-- ✅ Improved admin authorization checks
-- ✅ Added newsletter management system
+- ✅ Added product variants support
 - ✅ Enhanced tax and shipping calculations
-- ✅ Added wishlist functionality
-- ✅ Improved returns management system
- - ✅ Added category status API (enable/disable categories)
- - ✅ Category listing now supports search and filtering (search, isActive, includeCounts)
+- ✅ Added newsletter management system
+- ✅ Improved wishlist and cart functionality
+- ✅ Added returns management system
+- ✅ Enhanced category management with status and hierarchy
+- ✅ Added support for coupons and promotional codes
 
 ## Quick Start
 

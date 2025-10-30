@@ -7,46 +7,67 @@ const couponSchema = mongoose.Schema(
       required: true,
       unique: true,
       uppercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 20,
+      index: true
     },
     type: {
       type: String,
       enum: ['percentage', 'fixed'],
-      required: false,
+      required: true,
       default: 'fixed',
+      index: true
     },
     value: {
       type: Number,
-      required: false,
-      default: 0,
+      required: true,
+      min: 0,
+      validate: {
+        validator: function(v) {
+          if (this.type === 'percentage') {
+            return v <= 100;
+          }
+          return true;
+        },
+        message: props => `${props.value}% is not a valid percentage discount!`
+      }
     },
     validFrom: {
       type: Date,
-      required: false,
+      required: true,
       default: Date.now,
+      index: true
     },
     validUntil: {
       type: Date,
-      required: false,
+      required: true,
       default: function () {
         return new Date(Date.now() + 1000 * 60 * 60 * 24 * 365);
       },
+      index: true
     },
     minimumPurchase: {
       type: Number,
+      required: true,
       default: 0,
+      min: 0
     },
     maxUsage: {
       type: Number,
-      required: false,
+      required: true,
       default: 10000,
+      min: 1
     },
     usedCount: {
       type: Number,
       default: 0,
+      min: 0
     },
     isActive: {
       type: Boolean,
       default: true,
+      index: true
     },
     applicableProducts: [
       {
@@ -91,12 +112,13 @@ couponSchema.methods.isValid = function () {
 };
 
 couponSchema.methods.calculateDiscount = function (subtotal) {
-  if (subtotal < this.minimumPurchase) return 0;
+  const min = this.minimumPurchase || 0;
+  if (subtotal < min) return 0;
 
-  if (this.discountType === 'percentage') {
-    return (subtotal * this.discountAmount) / 100;
+  if (this.type === 'percentage') {
+    return (subtotal * (this.value || 0)) / 100;
   }
-  return this.discountAmount;
+  return this.value || 0;
 };
 
 module.exports = mongoose.model('Coupon', couponSchema);

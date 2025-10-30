@@ -55,20 +55,20 @@ async function importData() {
     {
       name: 'Admin User',
       email: 'admin@example.com',
-      password: 'password123',
+      password: 'Admin@123',
       isAdmin: true,
       isVerified: true,
     },
     {
       name: 'John Doe',
       email: 'john@example.com',
-      password: 'password123',
+      password: 'User@123',
       isVerified: true,
     },
     {
       name: 'Jane Smith',
       email: 'jane@example.com',
-      password: 'password123',
+      password: 'User@123',
       isVerified: true,
     },
   ];
@@ -80,55 +80,165 @@ async function importData() {
     { name: 'Electronics', description: 'Electronic gadgets and devices' },
     { name: 'Books', description: 'All kinds of books' },
     { name: 'Clothing', description: 'Apparel and accessories' },
+    { name: 'Home & Kitchen', description: 'Home appliances and kitchenware' },
+    { name: 'Sports', description: 'Sports equipment and accessories' },
+    { name: 'Beauty', description: 'Beauty and personal care products' },
+    { name: 'Toys', description: 'Toys and games for all ages' },
   ];
 
   const createdCategories = await Category.create(categories);
 
   // Products (reference categories)
   const products = [
+    // Electronics
     {
-      name: 'Wireless Headphones',
-      description: 'Noise-cancelling wireless headphones',
-      price: 99.99,
-      basePrice: 120,
-      countInStock: 25,
+      name: 'Premium Wireless Headphones',
+      description: 'High-end noise-cancelling wireless headphones with 30-hour battery life',
+      price: 299.99,
+      basePrice: 349.99,
+      countInStock: 50,
       category: createdCategories[0]._id,
-      user: createdUsers[0]._id,
+      seller: createdUsers[0]._id,
       variants: [
-        { sku: `WH-${Date.now()}-1`, attributes: { color: 'black' }, price: 99.99, countInStock: 25 }
+        { sku: `WH-${Date.now()}-BLK`, attributes: { color: 'black' }, price: 299.99, countInStock: 30 },
+        { sku: `WH-${Date.now()}-WHT`, attributes: { color: 'white' }, price: 299.99, countInStock: 20 }
       ],
     },
     {
-      name: 'JavaScript: The Good Parts',
-      description: 'A classic book about JavaScript',
-      price: 19.99,
+      name: 'Smartphone Pro Max',
+      description: '6.7-inch display, 256GB storage, triple camera system',
+      price: 999.99,
+      basePrice: 1099.99,
+      countInStock: 30,
+      category: createdCategories[0]._id,
+      seller: createdUsers[0]._id,
+      variants: [
+        { sku: `SP-${Date.now()}-256-BLK`, attributes: { storage: '256GB', color: 'black' }, price: 999.99, countInStock: 15 },
+        { sku: `SP-${Date.now()}-512-GLD`, attributes: { storage: '512GB', color: 'gold' }, price: 1199.99, countInStock: 15 }
+      ],
+    },
+    // Books
+    {
+      name: 'Modern JavaScript Guide',
+      description: 'Comprehensive guide to modern JavaScript development',
+      price: 39.99,
       countInStock: 100,
       category: createdCategories[1]._id,
-      user: createdUsers[1]._id,
+      seller: createdUsers[1]._id,
       variants: [
-        { sku: `JS-${Date.now()}-1`, attributes: { format: 'paperback' }, price: 19.99, countInStock: 100 }
+        { sku: `BK-${Date.now()}-PB`, attributes: { format: 'paperback' }, price: 39.99, countInStock: 50 },
+        { sku: `BK-${Date.now()}-HB`, attributes: { format: 'hardcover' }, price: 49.99, countInStock: 50 }
       ],
     },
     {
-      name: 'Plain T-Shirt',
-      description: '100% cotton t-shirt',
-      price: 9.99,
-      countInStock: 200,
-      category: createdCategories[2]._id,
-      user: createdUsers[2]._id,
+      name: 'Business Leadership',
+      description: 'Essential principles of modern business leadership',
+      price: 24.99,
+      countInStock: 75,
+      category: createdCategories[1]._id,
+      seller: createdUsers[1]._id,
       variants: [
-        { sku: `TS-${Date.now()}-1`, attributes: { size: 'M', color: 'white' }, price: 9.99, countInStock: 200 }
+        { sku: `BL-${Date.now()}-PB`, attributes: { format: 'paperback' }, price: 24.99, countInStock: 75 }
       ],
     },
+    // Clothing
+    {
+      name: 'Premium Cotton T-Shirt',
+      description: '100% organic cotton, comfortable fit',
+      price: 29.99,
+      countInStock: 200,
+      category: createdCategories[2]._id,
+      seller: createdUsers[2]._id,
+      variants: [
+        { sku: `TS-${Date.now()}-S-BLK`, attributes: { size: 'S', color: 'black' }, price: 29.99, countInStock: 40 },
+        { sku: `TS-${Date.now()}-M-BLK`, attributes: { size: 'M', color: 'black' }, price: 29.99, countInStock: 40 },
+        { sku: `TS-${Date.now()}-L-BLK`, attributes: { size: 'L', color: 'black' }, price: 29.99, countInStock: 40 }
+      ],
+    },
+    // Home & Kitchen
+    {
+      name: 'Smart Coffee Maker',
+      description: 'WiFi-enabled 12-cup coffee maker with programmable brewing',
+      price: 149.99,
+      basePrice: 179.99,
+      countInStock: 40,
+      category: createdCategories[3]._id,
+      seller: createdUsers[0]._id,
+      variants: [
+        { sku: `CM-${Date.now()}-BLK`, attributes: { color: 'black' }, price: 149.99, countInStock: 20 },
+        { sku: `CM-${Date.now()}-SS`, attributes: { color: 'stainless steel' }, price: 169.99, countInStock: 20 }
+      ],
+    },
+    // Sports
+    {
+      name: 'Yoga Mat Pro',
+      description: 'Extra thick eco-friendly yoga mat with carrying strap',
+      price: 49.99,
+      countInStock: 100,
+      category: createdCategories[4]._id,
+      seller: createdUsers[1]._id,
+      variants: [
+        { sku: `YM-${Date.now()}-BLU`, attributes: { color: 'blue' }, price: 49.99, countInStock: 50 },
+        { sku: `YM-${Date.now()}-PUR`, attributes: { color: 'purple' }, price: 49.99, countInStock: 50 }
+      ],
+    },
+    // Beauty
+    {
+      name: 'Vitamin C Serum',
+      description: 'Advanced anti-aging serum with 20% Vitamin C',
+      price: 34.99,
+      countInStock: 150,
+      category: createdCategories[5]._id,
+      seller: createdUsers[2]._id,
+      variants: [
+        { sku: `VC-${Date.now()}-30`, attributes: { size: '30ml' }, price: 34.99, countInStock: 75 },
+        { sku: `VC-${Date.now()}-50`, attributes: { size: '50ml' }, price: 54.99, countInStock: 75 }
+      ],
+    },
+    // Toys
+    {
+      name: 'Educational Robot Kit',
+      description: 'Build and program your own robot - perfect for learning STEM',
+      price: 79.99,
+      countInStock: 60,
+      category: createdCategories[6]._id,
+      seller: createdUsers[0]._id,
+      variants: [
+        { sku: `RB-${Date.now()}-BEG`, attributes: { level: 'beginner' }, price: 79.99, countInStock: 30 },
+        { sku: `RB-${Date.now()}-ADV`, attributes: { level: 'advanced' }, price: 99.99, countInStock: 30 }
+      ],
+    }
   ];
 
   const createdProducts = await Product.create(products);
 
   // Subcategories (linked to categories)
   const subcategories = [
+    // Electronics
     { name: 'Headphones', category: createdCategories[0]._id },
+    { name: 'Smartphones', category: createdCategories[0]._id },
+    { name: 'Laptops', category: createdCategories[0]._id },
+    { name: 'Cameras', category: createdCategories[0]._id },
+    // Books
     { name: 'Programming', category: createdCategories[1]._id },
+    { name: 'Fiction', category: createdCategories[1]._id },
+    { name: 'Business', category: createdCategories[1]._id },
+    // Clothing
     { name: 'Men', category: createdCategories[2]._id },
+    { name: 'Women', category: createdCategories[2]._id },
+    { name: 'Kids', category: createdCategories[2]._id },
+    // Home & Kitchen
+    { name: 'Appliances', category: createdCategories[3]._id },
+    { name: 'Cookware', category: createdCategories[3]._id },
+    // Sports
+    { name: 'Fitness', category: createdCategories[4]._id },
+    { name: 'Outdoor', category: createdCategories[4]._id },
+    // Beauty
+    { name: 'Skincare', category: createdCategories[5]._id },
+    { name: 'Haircare', category: createdCategories[5]._id },
+    // Toys
+    { name: 'Educational', category: createdCategories[6]._id },
+    { name: 'Board Games', category: createdCategories[6]._id },
   ];
 
   const createdSubcategories = await Subcategory.create(subcategories);
@@ -144,6 +254,33 @@ async function importData() {
       minimumPurchase: 0,
       maxUsage: 1000,
     },
+    {
+      code: 'SUMMER25',
+      type: 'percentage',
+      value: 25,
+      validFrom: new Date(Date.now()),
+      validUntil: new Date(Date.now() + 1000 * 60 * 60 * 24 * 60),
+      minimumPurchase: 100,
+      maxUsage: 500,
+    },
+    {
+      code: 'FREESHIP',
+      type: 'fixed',
+      value: 15,
+      validFrom: new Date(Date.now()),
+      validUntil: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
+      minimumPurchase: 75,
+      maxUsage: 2000,
+    },
+    {
+      code: 'FLASH50',
+      type: 'percentage',
+      value: 50,
+      validFrom: new Date(Date.now()),
+      validUntil: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      minimumPurchase: 200,
+      maxUsage: 100,
+    }
   ];
 
   const createdCoupons = await Coupon.create(coupons);
@@ -159,12 +296,21 @@ async function importData() {
   const shippings = [
     { name: 'Standard Shipping', carrier: 'LocalPost', estimatedDays: '3-7', baseRate: 5 },
     { name: 'Express', carrier: 'FastShip', estimatedDays: '1-2', baseRate: 15 },
+    { name: 'Same Day Delivery', carrier: 'FastShip', estimatedDays: '0-1', baseRate: 25 },
+    { name: 'International Standard', carrier: 'GlobalPost', estimatedDays: '7-14', baseRate: 20 },
+    { name: 'International Express', carrier: 'GlobalExpress', estimatedDays: '3-5', baseRate: 35 }
   ];
   const createdShippings = await ShippingMethod.create(shippings);
 
   // Tax rules
   const taxes = [
-    { region: 'EG', rate: 14, type: 'vat', isDefault: true },
+    { 
+      name: 'Egypt VAT',
+      region: 'EG', 
+      rate: 14, 
+      type: 'vat', 
+      isDefault: true 
+    },
   ];
   const createdTaxes = await Tax.create(taxes);
 
@@ -187,7 +333,7 @@ async function importData() {
         postalCode: '11511',
         country: 'Egypt',
       },
-      paymentMethod: 'PayTabs',
+      paymentMethod: 'paytabs',
       itemsPrice: createdProducts[0].price || 99.99,
       taxPrice: 5.0,
       shippingPrice: 10.0,

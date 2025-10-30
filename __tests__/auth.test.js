@@ -12,7 +12,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const http = require('http');
 
-const app = require('../app');
+const app = require('../index');
 const User = require('../models/userModel');
 const generateToken = require('../utils/generateToken');
 
@@ -207,6 +207,12 @@ describe('Auth Controller Integration Tests', () => {
         password: 'Pass123!',
         verificationToken: token,
         isVerified: false,
+          sessions: [{
+            jti: new mongoose.Types.ObjectId().toString(),
+            userAgent: 'test-agent',
+            ip: '127.0.0.1',
+            lastUsedAt: new Date()
+          }]
       });
 
       const res = await api().get(`/api/auth/verify-email/${token}`);
