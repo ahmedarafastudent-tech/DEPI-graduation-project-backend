@@ -20,7 +20,9 @@ describe('Category Controller Tests', () => {
     admin = adminUser;
     adminToken = token;
 
-    const { user: regularUser, token: regularToken } = await createUserAndToken(app, { isAdmin: false });
+    const { user: regularUser, token: regularToken } = await createUserAndToken(app, {
+      isAdmin: false,
+    });
     user = regularUser;
     userToken = regularToken;
   });
@@ -42,7 +44,7 @@ describe('Category Controller Tests', () => {
       const categoryData = {
         name: 'Electronics',
         description: 'Electronic devices and accessories',
-        image: '/images/electronics.jpg'
+        image: '/images/electronics.jpg',
       };
 
       const res = await request(app)
@@ -60,23 +62,23 @@ describe('Category Controller Tests', () => {
         .post('/api/categories')
         .set('Authorization', `Bearer ${userToken}`)
         .send({
-          name: 'Electronics'
+          name: 'Electronics',
         });
 
-  expect(res.statusCode).toBe(403);
+      expect(res.statusCode).toBe(403);
     });
 
     it('should not allow duplicate category names', async () => {
       await Category.create({
         name: 'Electronics',
-        slug: 'electronics'
+        slug: 'electronics',
       });
 
       const res = await request(app)
         .post('/api/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          name: 'Electronics'
+          name: 'Electronics',
         });
 
       expect(res.statusCode).toBe(400);
@@ -89,28 +91,25 @@ describe('Category Controller Tests', () => {
         {
           name: 'Electronics',
           slug: 'electronics',
-          isActive: true
+          isActive: true,
         },
         {
           name: 'Clothing',
           slug: 'clothing',
-          isActive: true
-        }
+          isActive: true,
+        },
       ]);
     });
 
     it('should return all active categories', async () => {
-      const res = await request(app)
-        .get('/api/categories');
+      const res = await request(app).get('/api/categories');
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveLength(2);
     });
 
     it('should include category counts when requested', async () => {
-      const res = await request(app)
-        .get('/api/categories')
-        .query({ includeCounts: true });
+      const res = await request(app).get('/api/categories').query({ includeCounts: true });
 
       expect(res.statusCode).toBe(200);
       expect(res.body[0]).toHaveProperty('productCount');
@@ -125,21 +124,19 @@ describe('Category Controller Tests', () => {
         name: 'Electronics',
         slug: 'electronics',
         description: 'Electronic devices',
-        isActive: true
+        isActive: true,
       });
     });
 
     it('should get category by ID', async () => {
-      const res = await request(app)
-        .get(`/api/categories/${category._id}`);
+      const res = await request(app).get(`/api/categories/${category._id}`);
 
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe('Electronics');
     });
 
     it('should return 404 for non-existent category', async () => {
-      const res = await request(app)
-        .get(`/api/categories/${mongoose.Types.ObjectId()}`);
+      const res = await request(app).get(`/api/categories/${mongoose.Types.ObjectId()}`);
 
       expect(res.statusCode).toBe(404);
     });
@@ -152,7 +149,7 @@ describe('Category Controller Tests', () => {
       category = await Category.create({
         name: 'Electronics',
         slug: 'electronics',
-        isActive: true
+        isActive: true,
       });
     });
 
@@ -162,7 +159,7 @@ describe('Category Controller Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: 'Updated Electronics',
-          description: 'Updated description'
+          description: 'Updated description',
         });
 
       expect(res.statusCode).toBe(200);
@@ -175,10 +172,10 @@ describe('Category Controller Tests', () => {
         .put(`/api/categories/${category._id}`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({
-          name: 'Updated Electronics'
+          name: 'Updated Electronics',
         });
 
-  expect(res.statusCode).toBe(403);
+      expect(res.statusCode).toBe(403);
     });
   });
 
@@ -189,7 +186,7 @@ describe('Category Controller Tests', () => {
       category = await Category.create({
         name: 'Electronics',
         slug: 'electronics',
-        isActive: true
+        isActive: true,
       });
     });
 
@@ -207,7 +204,120 @@ describe('Category Controller Tests', () => {
         .delete(`/api/categories/${category._id}`)
         .set('Authorization', `Bearer ${userToken}`);
 
-  expect(res.statusCode).toBe(403);
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('Category Validation Tests', () => {
+    it('should validate required fields', async () => {
+      const res = await request(app)
+        .post('/api/categories')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('message');
+      expect(res.body.message).toContain('name');
+    });
+
+    it('should validate category name length', async () => {
+      const res = await request(app)
+        .post('/api/categories')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: 'a', // Too short
+        });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('length');
+    });
+
+    it('should sanitize category name', async () => {
+      const res = await request(app)
+        .post('/api/categories')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: '  Electronics  ', // Extra spaces
+        });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.name).toBe('Electronics');
+    });
+  });
+
+  describe('Category Filtering and Search', () => {
+    beforeEach(async () => {
+      await Category.create([
+        {
+          name: 'Electronics',
+          slug: 'electronics',
+          isActive: true,
+        },
+        {
+          name: 'Clothing',
+          slug: 'clothing',
+          isActive: false,
+        },
+        {
+          name: 'Home & Garden',
+          slug: 'home-garden',
+          isActive: true,
+        },
+      ]);
+    });
+
+    it('should filter active categories only', async () => {
+      const res = await request(app).get('/api/categories').query({ isActive: true });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveLength(2);
+      expect(res.body.every((cat) => cat.isActive)).toBe(true);
+    });
+
+    it('should handle malformed ObjectId', async () => {
+      const res = await request(app).get('/api/categories/invalid-id');
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Invalid ID');
+    });
+
+    it('should search categories by name', async () => {
+      const res = await request(app).get('/api/categories').query({ search: 'Elec' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].name).toBe('Electronics');
+    });
+  });
+
+  describe('Category Status Management', () => {
+    let category;
+
+    beforeEach(async () => {
+      category = await Category.create({
+        name: 'Electronics',
+        slug: 'electronics',
+        isActive: true,
+      });
+    });
+
+    it('should deactivate category when admin', async () => {
+      const res = await request(app)
+        .put(`/api/categories/${category._id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isActive: false });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.isActive).toBe(false);
+    });
+
+    it('should not allow regular users to change category status', async () => {
+      const res = await request(app)
+        .put(`/api/categories/${category._id}/status`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ isActive: false });
+
+      expect(res.statusCode).toBe(403);
     });
   });
 });

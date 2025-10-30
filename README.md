@@ -11,6 +11,8 @@
 - ✅ Enhanced tax and shipping calculations
 - ✅ Added wishlist functionality
 - ✅ Improved returns management system
+ - ✅ Added category status API (enable/disable categories)
+ - ✅ Category listing now supports search and filtering (search, isActive, includeCounts)
 
 ## Quick Start
 
@@ -199,6 +201,27 @@ Error example:
 8. [Security](#security)
 9. [Admin Features](#admin-features)
 10. [Testing Guide](#testing-guide)
+
+## Testing Guide
+
+Testing is handled with Jest and an in-memory MongoDB server (via `mongodb-memory-server`). A central test setup file (`__tests__/setup.js`) manages the memory server and collection cleanup.
+
+- Running tests (recommended):
+
+```powershell
+# Run whole suite in-band for consistent isolation
+npm test -- -i --runInBand
+
+# Run a single test file
+npm test -- __tests__/your.test.js --runInBand
+```
+
+Notes on test DB isolation and deterministic ids:
+
+- To avoid duplicate `_id` collisions across test files, the test setup preserves `users` within a test file while resetting other collections between tests. This preserves tokens and sessions created in `beforeAll` hooks inside the same file.
+- Avoid forcing deterministic ObjectIds across test files (for example, mutating generated ids to end with a fixed character). Instead generate ids per-file or allow models to create ids at insertion time. If deterministic ids are required, clear the specific collections in `beforeAll` of the test file to avoid collisions.
+
+If you hit duplicate key `_id` errors, search the test suite for manual id generation and adjust the helper to return fresh ObjectIds per-suite.
 
 ## Environment Setup
 

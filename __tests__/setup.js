@@ -5,6 +5,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { faker } = require('@faker-js/faker');
 const User = require('../models/userModel');
+const Coupon = require('../models/couponModel');
+const Category = require('../models/categoryModel');
+const Product = require('../models/productModel');
+const Order = require('../models/orderModel');
 const { createUserAndToken, createProduct } = require('./testUtils');
 const redisMock = require('./mocks/redisMock');
 
@@ -67,6 +71,35 @@ beforeAll(async () => {
     const collections = mongoose.connection.collections;
     for (const key in collections) {
       await collections[key].deleteMany({});
+    }
+
+    // Extra safeguard: ensure certain collections are empty to avoid
+    // intermittent duplicate _id issues across suites (some tests
+    // create deterministic fixtures). This is idempotent.
+    try {
+      await User.deleteMany({});
+    } catch (err) {
+      // ignore
+    }
+    try {
+      await Coupon.deleteMany({});
+    } catch (err) {
+      // ignore
+    }
+    try {
+      await Category.deleteMany({});
+    } catch (err) {
+      // ignore
+    }
+    try {
+      await Product.deleteMany({});
+    } catch (err) {
+      // ignore
+    }
+    try {
+      await Order.deleteMany({});
+    } catch (err) {
+      // ignore
     }
 
     if (!redisMock || typeof redisMock.reset !== 'function') {
@@ -149,6 +182,14 @@ afterAll(async () => {
     }
 
     if (mongoose.connection.readyState !== 0) {
+      // Ensure critical collections are cleared before dropping DB as
+      // an extra safety against retained fixtures in some environments.
+      try { await User.deleteMany({}); } catch (e) {}
+      try { await Coupon.deleteMany({}); } catch (e) {}
+      try { await Category.deleteMany({}); } catch (e) {}
+      try { await Product.deleteMany({}); } catch (e) {}
+      try { await Order.deleteMany({}); } catch (e) {}
+
       await mongoose.connection.dropDatabase();
       await mongoose.connection.close();
       await mongoose.disconnect();

@@ -13,6 +13,9 @@ describe('Coupon Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
+    // ensure clean collections to avoid duplicate _id issues between suites
+    await User.deleteMany({});
+    await Coupon.deleteMany({});
     const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
     admin = adminUser;
     adminToken = token;

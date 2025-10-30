@@ -6,6 +6,7 @@ const {
   getCategoryById,
   updateCategory,
   deleteCategory,
+  updateCategoryStatus,
 } = require('../controllers/categoryController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -16,5 +17,7 @@ router
   .get(getCategoryById)
   .put(protect, admin, updateCategory)
   .delete(protect, admin, deleteCategory);
+router.route('/:id/status')
+  .put(protect, admin, updateCategoryStatus);
 
 module.exports = router;

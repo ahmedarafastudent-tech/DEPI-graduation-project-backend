@@ -4,8 +4,18 @@ const Product = require('../models/productModel');
 const AppError = require('../utils/appError');
 
 const getCategories = asyncHandler(async (req, res) => {
-  const includeCounts = req.query && (req.query.includeCounts === 'true' || req.query.includeCounts === true);
-  const categories = await Category.find({}).populate('subcategories');
+  const { includeCounts, isActive, search } = req.query;
+  const query = {};
+
+  if (isActive !== undefined) {
+    query.isActive = isActive === 'true';
+  }
+
+  if (search) {
+    query.name = { $regex: search, $options: 'i' };
+  }
+
+  const categories = await Category.find(query).populate('subcategories');
 
   if (includeCounts) {
     const result = await Promise.all(
@@ -25,7 +35,10 @@ const getCategories = asyncHandler(async (req, res) => {
 const createCategory = asyncHandler(async (req, res) => {
   const { name, description, image } = req.body;
   if (!name) {
-    throw new AppError('Name is required', 400);
+    throw new AppError('name field is required', 400);
+  }
+  if (name.trim().length < 2) {
+    throw new AppError('name length must be at least 2 characters', 400);
   }
 
   const exists = await Category.findOne({ name: name.trim() });
@@ -38,6 +51,10 @@ const createCategory = asyncHandler(async (req, res) => {
 });
 
 const getCategoryById = asyncHandler(async (req, res) => {
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new AppError('Invalid ID format', 400);
+    }
+
   const category = await Category.findById(req.params.id).populate('subcategories');
   if (!category) throw new AppError(`Not Found - /api/categories/${req.params.id}`, 404);
   res.json(category);
@@ -80,4 +97,13 @@ module.exports = {
   getCategoryById,
   updateCategory,
   deleteCategory,
+    updateCategoryStatus: asyncHandler(async (req, res) => {
+      const category = await Category.findById(req.params.id);
+      if (!category) {
+        throw new AppError(`Not Found - /api/categories/${req.params.id}`, 404);
+      }
+      category.isActive = req.body.isActive;
+      await category.save();
+      res.json(category);
+    }),
 };

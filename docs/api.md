@@ -228,6 +228,84 @@ npm run seed
 
 ## Categories & Subcategories
 
+### Categories API Endpoints
+
+#### List Categories
+```http
+GET /api/categories
+```
+
+Query Parameters:
+- `search` (optional): full-text search on category name
+- `isActive` (optional): `true` or `false` to filter by active state
+- `includeCounts` (optional): `true` to include product/subcategory counts per category
+
+Example:
+```
+GET /api/categories?search=electronics&isActive=true&includeCounts=true
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "category_id",
+      "name": "Electronics",
+      "slug": "electronics",
+      "isActive": true,
+      "counts": { "products": 124, "subcategories": 6 }
+    }
+  ]
+}
+```
+
+#### Get Category by ID
+```http
+GET /api/categories/:id
+```
+
+#### Create Category (Admin Only)
+```http
+POST /api/categories
+```
+
+Request body:
+```json
+{ "name": "Category Name" }
+```
+
+#### Update Category (Admin Only)
+```http
+PUT /api/categories/:id
+```
+
+#### Update Category Status (Admin Only)
+Enable or disable a category without removing it from the DB.
+
+```http
+PUT /api/categories/:id/status
+Content-Type: application/json
+
+{
+  "isActive": true
+}
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "data": { "_id": "category_id", "isActive": true },
+  "message": "Category status updated"
+}
+```
+
+Notes:
+- The status endpoint is admin-protected. Use an admin Bearer token in the `Authorization` header.
+- This endpoint is useful to temporarily hide categories from public listings without deleting them.
+
 ### Subcategories API Endpoints
 
 #### List Subcategories
