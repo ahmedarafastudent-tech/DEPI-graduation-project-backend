@@ -1,9 +1,4 @@
-/* 
-  Cleaned authController.js
-  - single set of imports at top
-  - one implementation per exported controller
-  - consistent error handling via express-async-handler
-*/
+
 const asyncHandler = require('express-async-handler');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -15,7 +10,6 @@ if (sendEmail && typeof sendEmail !== 'function' && typeof sendEmail.default ===
   sendEmail = sendEmail.default;
 }
 
-// Helper: safely call sendEmail (tests stub this to succeed)
 async function safeSendEmail(payload) {
   if (!sendEmail) return { success: false };
   try {
@@ -25,7 +19,6 @@ async function safeSendEmail(payload) {
   }
 }
 
-// registerUser
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
   if (!email || !password) {
@@ -42,7 +35,6 @@ const registerUser = asyncHandler(async (req, res) => {
   const sanitizedName = (name || '').replace(/<[^>]*>/g, '').replace(/[<>]/g, '');
   const user = await User.create({ name: sanitizedName, email, password });
 
-  // send welcome email only in non-test env (but safeSendEmail handles test stubs)
   if (process.env.NODE_ENV !== 'test') {
     safeSendEmail({ email: user.email, subject: 'Welcome', message: `Welcome ${user.name || ''}` });
   }
@@ -56,7 +48,6 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 });
 
-// loginUser
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -80,7 +71,6 @@ const loginUser = asyncHandler(async (req, res) => {
     lastUsedAt: new Date(),
   });
 
-  // Clean up old sessions and enforce session limit
   user.cleanupSessions().pruneOldSessions(50);
   await user.save();
 
@@ -93,9 +83,7 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 });
 
-// logoutUser
 const logoutUser = asyncHandler(async (req, res) => {
-  // get token either from Bearer header or cookie
   let token = null;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
@@ -126,7 +114,6 @@ const logoutUser = asyncHandler(async (req, res) => {
   }
 
   if (jti) {
-    // Mark specific session as revoked instead of removing it
     user.sessions = (user.sessions || []).map((s) => {
       if (s.jti === jti) {
         return Object.assign({}, s.toObject ? s.toObject() : s, {
@@ -137,14 +124,13 @@ const logoutUser = asyncHandler(async (req, res) => {
       return s;
     });
   } else {
-    // For global logout, mark all sessions as revoked and set lastLogout
     user.sessions = (user.sessions || []).map((s) => 
       Object.assign({}, s.toObject ? s.toObject() : s, {
         revoked: true,
         lastUsedAt: new Date()
       })
     );
-    user.lastLogout = Date.now() - 1000; // avoid iat race
+    user.lastLogout = Date.now() - 1000; 
   }
 
   await user.save();
@@ -154,7 +140,6 @@ const logoutUser = asyncHandler(async (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-// forgotPassword
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -190,7 +175,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password reset email sent' });
 });
 
-// resetPassword
 const resetPassword = asyncHandler(async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
@@ -217,19 +201,16 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password reset successful' });
 });
 
-// listSessions
 const listSessions = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('sessions');
   if (!user) {
     res.status(404);
     throw new Error('User not found');
   }
-  // normalize sessions
   const sessions = (user.sessions || []).map((s) => (s.toObject ? s.toObject() : s));
   res.json({ sessions });
 });
 
-// revokeSession
 const revokeSession = asyncHandler(async (req, res) => {
   const { jti } = req.params;
   if (!jti) {
@@ -263,7 +244,6 @@ const revokeSession = asyncHandler(async (req, res) => {
   res.json({ message: 'Session revoked' });
 });
 
-// revokeAllSessions
 const revokeAllSessions = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -278,7 +258,6 @@ const revokeAllSessions = asyncHandler(async (req, res) => {
   res.json({ message: 'All sessions revoked' });
 });
 
-// verifyEmail
 const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.params;
   if (!token) {
@@ -296,7 +275,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
   res.json({ message: 'Email verified' });
 });
 
-// getUserProfile
 const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -314,7 +292,6 @@ const getUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// updateUserProfile
 const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -340,7 +317,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// updatePassword (optional)
 const updatePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {

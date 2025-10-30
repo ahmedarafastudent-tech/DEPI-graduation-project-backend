@@ -13,11 +13,9 @@ describe('Shipping Controller Tests', () => {
   let user;
 
   beforeEach(async () => {
-    // Clean up before each test
     await User.deleteMany({});
     await Shipping.deleteMany({});
     
-    // Create admin user with dynamic ID ending in 'a'
     const adminId = new mongoose.Types.ObjectId();
     const adminIdStr = adminId.toString().slice(0, -1) + 'a';
     const adminJti = new mongoose.Types.ObjectId().toString();
@@ -37,7 +35,6 @@ describe('Shipping Controller Tests', () => {
     });
     adminToken = generateToken(admin._id, { jti: adminJti });
 
-    // Create regular user with dynamic ID
     const userJti = new mongoose.Types.ObjectId().toString();
     user = await User.create({
       _id: new mongoose.Types.ObjectId(),

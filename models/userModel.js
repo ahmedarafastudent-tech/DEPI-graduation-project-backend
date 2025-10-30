@@ -55,7 +55,6 @@ const userSchema = mongoose.Schema(
     lastLogin: {
       type: Date,
     },
-    // Per-device/session tracking for JWTs. Each session stores a jti and metadata.
     sessions: [
       {
         jti: { type: String, index: true },
@@ -66,7 +65,6 @@ const userSchema = mongoose.Schema(
         revoked: { type: Boolean, default: false },
       },
     ],
-    // Optional global logout timestamp: tokens issued before this are invalid.
     lastLogout: Date,
     loginAttempts: {
       type: Number,
@@ -124,12 +122,11 @@ userSchema.methods.getResetPasswordToken = function () {
     .update(resetToken)
     .digest('hex');
 
-  this.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  this.resetPasswordExpires = Date.now() + 10 * 60 * 1000; 
 
   return resetToken;
 };
 
-// Add session management methods
 userSchema.methods.cleanupSessions = function() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   this.sessions = (this.sessions || []).filter(s => 
@@ -150,20 +147,17 @@ userSchema.methods.getSessionStats = function() {
 userSchema.methods.pruneOldSessions = function(maxSessions = 50) {
   if (!this.sessions || this.sessions.length <= maxSessions) return this;
   
-  // Sort sessions by lastUsedAt (most recent first)
   const sorted = [...this.sessions].sort((a, b) => {
     const dateA = a.lastUsedAt || a.createdAt || new Date(0);
     const dateB = b.lastUsedAt || b.createdAt || new Date(0);
     return dateB - dateA;
   });
 
-  // Keep only the most recent sessions up to maxSessions
   this.sessions = sorted.slice(0, maxSessions);
   return this;
 };
 
-// Add a compound index for common lookup patterns (email + isVerified).
-// This improves login/verification queries and avoids collection scans.
+
 userSchema.index({ email: 1, isVerified: 1 });
 
 module.exports = mongoose.model('User', userSchema);

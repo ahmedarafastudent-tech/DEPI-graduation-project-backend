@@ -7,11 +7,11 @@ const generateToken = require('../utils/generateToken');
 
 async function createUserAndToken(app, { isAdmin = false, email = null, password = 'Test123!' } = {}) {
   const uniqueEmail = email || `test+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
-  // For admin users, ensure their ID ends with 'a'
   const userId = isAdmin 
     ? new mongoose.Types.ObjectId().toString().slice(0, -1) + 'a'
     : new mongoose.Types.ObjectId();
     
+  const jti = new mongoose.Types.ObjectId().toString(); 
   const user = await User.create({
     _id: userId,
     name: isAdmin ? 'Admin User' : 'Test User',
@@ -19,9 +19,15 @@ async function createUserAndToken(app, { isAdmin = false, email = null, password
     password,
     isAdmin,
     isVerified: true,
+    sessions: [{
+      jti,
+      userAgent: 'test-agent',
+      ip: '127.0.0.1',
+      lastUsedAt: new Date()
+    }]
   });
 
-  const token = generateToken(user._id);
+  const token = generateToken(user._id, { jti }); 
   return { user, token };
 }
 

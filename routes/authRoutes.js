@@ -30,7 +30,6 @@ router.put('/profile', protect, validate(updateProfileValidation), updateUserPro
 router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:token', validate(resetPasswordValidation), resetPassword);
 
-// Session management
 router.post('/logout', protect, logoutUser);
 router.get('/sessions', protect, listSessions);
 router.delete('/sessions/:jti', protect, revokeSession);

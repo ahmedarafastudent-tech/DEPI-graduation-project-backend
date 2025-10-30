@@ -1,7 +1,6 @@
 const { logger } = require('./logger');
 const mongoose = require('mongoose');
 
-// Connection configuration
 const config = {
   retries: {
     max: 5,
@@ -27,19 +26,16 @@ const config = {
   }
 };
 
-// Helper to return connection options according to NODE_ENV
 const getConnectionOptions = () => {
   const env = process.env.NODE_ENV || 'development';
   const base = config.options.base || {};
 
-  // Allow overrides via environment variables for pool sizing (useful in production).
   const maxPool = Number(process.env.MONGO_MAX_POOL_SIZE || process.env.MONGO_MAX_POOL || 50);
   const minPool = Number(process.env.MONGO_MIN_POOL_SIZE || process.env.MONGO_MIN_POOL || 5);
 
   const poolOptions = {
     maxPoolSize: maxPool,
     minPoolSize: minPool,
-    // Keep the base options to ensure stable connections.
     socketTimeoutMS: base.socketTimeoutMS || 45000,
     serverSelectionTimeoutMS: base.serverSelectionTimeoutMS || 5000,
   };

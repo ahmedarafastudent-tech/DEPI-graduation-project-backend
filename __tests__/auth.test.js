@@ -16,24 +16,20 @@ const app = require('../app');
 const User = require('../models/userModel');
 const generateToken = require('../utils/generateToken');
 
-// Create a server instance that we can close between tests
 let server;
 
 describe('Auth Controller Integration Tests', () => {
   let api;
 
   beforeAll((done) => {
-    // Create server for this test suite
     server = http.createServer(app);
     server.listen(0, () => {
-      // Use port 0 for random available port
       done();
     });
     api = () => request(server);
   });
 
   afterAll((done) => {
-    // Clean up both server and database connections
     if (server) {
       server.close(() => {
         mongoose.connection.close()

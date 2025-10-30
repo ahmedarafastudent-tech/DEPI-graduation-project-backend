@@ -1,4 +1,3 @@
-// Single, consolidated payment tests that mock paytabs instance methods per-test.
 process.env.NODE_ENV = 'test';
 
 const mongoose = require('mongoose');

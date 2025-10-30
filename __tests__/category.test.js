@@ -13,8 +13,8 @@ describe('Category Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
-    await User.deleteMany({}); // Clean up users before tests
-    await Category.deleteMany({}); // Clean up categories before tests
+    await User.deleteMany({}); 
+    await Category.deleteMany({}); 
 
     const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
     admin = adminUser;
@@ -225,7 +225,7 @@ describe('Category Controller Tests', () => {
         .post('/api/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          name: 'a', // Too short
+          name: 'a',
         });
 
       expect(res.statusCode).toBe(400);
@@ -237,7 +237,7 @@ describe('Category Controller Tests', () => {
         .post('/api/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          name: '  Electronics  ', // Extra spaces
+          name: '  Electronics  ', 
         });
 
       expect(res.statusCode).toBe(201);

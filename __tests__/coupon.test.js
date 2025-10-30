@@ -13,7 +13,6 @@ describe('Coupon Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
-    // ensure clean collections to avoid duplicate _id issues between suites
     await User.deleteMany({});
     await Coupon.deleteMany({});
     const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
@@ -48,7 +47,7 @@ describe('Coupon Controller Tests', () => {
         minPurchase: 100,
         maxDiscount: 50,
         startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
         maxUses: 100
       };
 
