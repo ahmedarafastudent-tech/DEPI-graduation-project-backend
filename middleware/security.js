@@ -79,8 +79,11 @@ const securityMiddleware = (app) => {
   };
 
   const createRateLimiter = (windowMs, max, message) => {
-    const isTest = MODULE_IS_TEST;
-    const actualWindowMs = isTest ? 1000 : windowMs;
+  const isTest = MODULE_IS_TEST;
+  // Use a slightly larger test window to accommodate sequential test
+  // requests that may take a few hundred milliseconds each on CI/slow
+  // developer machines. 5s is still fast for tests but reduces flakiness.
+  const actualWindowMs = isTest ? 5000 : windowMs;
     const actualMax = max; 
 
     if (isTest) {
@@ -91,8 +94,10 @@ const securityMiddleware = (app) => {
         if (!forceProduction && !req._test_rate_limit && !testHeader) return next();
 
         try {
-          const ip = req.get('X-Forwarded-For') || req.ip;
-          const key = `${ip}:${req.url}`;
+          // Use the same explicit X-Forwarded-For || req.ip logic as the
+          // production limiter so tests that set X-Forwarded-For are
+          // correctly isolated (test env doesn't enable trust proxy).
+          const key = `${req.get('X-Forwarded-For') || req.ip}:${req.url}`;
           const now = Date.now();
           const entry = hits.get(key) || { count: 0, firstTs: now };
 
@@ -104,7 +109,9 @@ const securityMiddleware = (app) => {
           entry.count += 1;
           hits.set(key, entry);
 
-          if (entry.count > max) { 
+          // Compare against the resolved actualMax to avoid confusion when
+          // the limiter adjusts window or max for test mode.
+          if (entry.count > actualMax) { 
             logSecurityEvent('rate-limit-exceeded', {
               ip: req.ip,
               path: req.path,
@@ -299,9 +306,11 @@ const securityMiddleware = (app) => {
 module.exports = securityMiddleware;
 
 // Export a named createRateLimiter for tests that need to construct limiters
-const createRateLimiterExport = (windowMs, max, message) => {
-  const isTest = MODULE_IS_TEST;
-  const actualWindowMs = isTest ? 1000 : windowMs;
+module.exports.createRateLimiter = function createRateLimiterExport(windowMs, max, message) {
+  // Check NODE_ENV dynamically so tests can change it at runtime and
+  // limiter behavior adapts accordingly.
+  const isTest = process.env.NODE_ENV === 'test';
+  const actualWindowMs = isTest ? 5000 : windowMs;
   const actualMax = max;
 
   // In test mode return a lightweight in-memory limiter to avoid interacting
@@ -311,12 +320,13 @@ const createRateLimiterExport = (windowMs, max, message) => {
   if (isTest) {
     const hits = new Map(); // key -> {count, firstTs}
 
-  const middleware = (req, res, next) => {
-  const forceProduction = process.env.NODE_ENV === 'production';
-  if (!forceProduction && !req._test_rate_limit) return next();
+    const middleware = (req, res, next) => {
+      const forceProduction = process.env.NODE_ENV === 'production' || process.env.FORCE_PRODUCTION_LIMITER === 'true';
+      const testHeader = req.get && req.get('X-Test-Rate-Limit');
+      if (!forceProduction && !req._test_rate_limit && !testHeader) return next();
 
       try {
-        const key = `${ipKeyGenerator(req)}:${req.url}`;
+        const key = `${(req.get && req.get('X-Forwarded-For')) || req.ip}:${req.url}`;
         const now = Date.now();
         const entry = hits.get(key) || { count: 0, firstTs: now };
 
@@ -366,4 +376,3 @@ const createRateLimiterExport = (windowMs, max, message) => {
 };
 
 module.exports = securityMiddleware;
-module.exports.createRateLimiter = createRateLimiterExport;

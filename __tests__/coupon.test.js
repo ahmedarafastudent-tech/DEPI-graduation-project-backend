@@ -13,14 +13,9 @@ describe('Coupon Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
-    admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: 'Admin@123Password',
-      isAdmin: true,
-      isVerified: true
-    });
-    adminToken = generateToken(admin._id);
+    const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
+    admin = adminUser;
+    adminToken = token;
 
     user = await User.create({
       name: 'Regular User',

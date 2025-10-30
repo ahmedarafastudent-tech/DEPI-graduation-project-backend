@@ -4,6 +4,10 @@ const { protect } = require('../middleware/authMiddleware');
 const { 
   registerUser, 
   loginUser,
+  logoutUser,
+  listSessions,
+  revokeSession,
+  revokeAllSessions,
   verifyEmail,
   getUserProfile,
   updateUserProfile,
@@ -25,5 +29,11 @@ router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, validate(updateProfileValidation), updateUserProfile);
 router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:token', validate(resetPasswordValidation), resetPassword);
+
+// Session management
+router.post('/logout', protect, logoutUser);
+router.get('/sessions', protect, listSessions);
+router.delete('/sessions/:jti', protect, revokeSession);
+router.delete('/sessions', protect, revokeAllSessions);
 
 module.exports = router;

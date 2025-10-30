@@ -2,6 +2,11 @@
 
 ## Quick Reference
 
+````markdown
+# API Documentation (Updated October 2025)
+
+## Quick Reference
+
 ### Base URL
 - Development: `http://localhost:5000`
 - Custom: Set via `BACKEND_URL` in `.env`
@@ -317,4 +322,302 @@ DELETE /api/subcategories/:id
 - 400 Bad Request: Invalid category ID or validation errors
 - 401 Unauthorized: Authentication required
 - 403 Forbidden: Not authorized as admin
-- 404 Not Found: Subcategory not found
+- - 404 Not Found: Subcategory not found
+
+## Newsletter Management
+
+### Subscribe to Newsletter
+```http
+POST /api/newsletter/subscribe
+Content-Type: application/json
+
+{
+  "email": "subscriber@example.com",
+  "preferences": ["promotions", "news", "updates"]
+}
+
+Response 201:
+{
+  "success": true,
+  "data": {
+    "email": "subscriber@example.com",
+    "preferences": ["promotions", "news", "updates"],
+    "isSubscribed": true,
+    "subscribedAt": "2025-10-30T00:00:00.000Z"
+  }
+}
+```
+
+### Unsubscribe from Newsletter
+```http
+POST /api/newsletter/unsubscribe
+Content-Type: application/json
+
+{
+  "email": "subscriber@example.com"
+}
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "email": "subscriber@example.com",
+    "isSubscribed": false
+  }
+}
+```
+
+### Update Preferences (Authenticated)
+```http
+PUT /api/newsletter/preferences
+Content-Type: application/json
+
+{
+  "preferences": ["promotions", "news"]
+}
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "email": "user@example.com",
+    "preferences": ["promotions", "news"],
+    "updatedAt": "2025-10-30T00:00:00.000Z"
+  }
+}
+```
+
+## Tax Management
+
+### Create Tax Rate (Admin)
+```http
+POST /api/tax
+Content-Type: application/json
+
+{
+  "name": "US Sales Tax",
+  "rate": 8.5,
+  "region": "US",
+  "isDefault": true,
+  "applicableItems": ["physical", "digital"]
+}
+
+Response 201:
+{
+  "success": true,
+  "data": {
+    "_id": "tax_id",
+    "name": "US Sales Tax",
+    "rate": 8.5,
+    "region": "US",
+    "isDefault": true,
+    "applicableItems": ["physical", "digital"],
+    "createdAt": "2025-10-30T00:00:00.000Z"
+  }
+}
+```
+
+### Calculate Tax for Order
+```http
+POST /api/tax/calculate
+Content-Type: application/json
+
+{
+  "subtotal": 100.00,
+  "items": [
+    {
+      "type": "physical",
+      "price": 80.00
+    },
+    {
+      "type": "digital",
+      "price": 20.00
+    }
+  ],
+  "region": "US"
+}
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "subtotal": 100.00,
+    "taxAmount": 8.50,
+    "total": 108.50,
+    "breakdown": {
+      "physical": {
+        "amount": 6.80,
+        "rate": 8.5
+      },
+      "digital": {
+        "amount": 1.70,
+        "rate": 8.5
+      }
+    }
+  }
+}
+```
+
+## Returns Management
+
+### Create Return Request
+```http
+POST /api/returns
+Content-Type: application/json
+
+{
+  "orderId": "order_id",
+  "items": [
+    {
+      "productId": "product_id",
+      "quantity": 1,
+      "reason": "defective",
+      "condition": "unopened"
+    }
+  ],
+  "reason": "Product arrived damaged",
+  "preferredOutcome": "refund"
+}
+
+Response 201:
+{
+  "success": true,
+  "data": {
+    "_id": "return_id",
+    "status": "pending",
+    "items": [{
+      "productId": "product_id",
+      "quantity": 1,
+      "reason": "defective",
+      "condition": "unopened"
+    }],
+    "reason": "Product arrived damaged",
+    "preferredOutcome": "refund",
+    "createdAt": "2025-10-30T00:00:00.000Z"
+  }
+}
+```
+
+### Process Return (Admin)
+```http
+PUT /api/returns/:id
+Content-Type: application/json
+
+{
+  "status": "approved",
+  "adminNotes": "Refund approved",
+  "refundAmount": 100.00
+}
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "_id": "return_id",
+    "status": "approved",
+    "refundAmount": 100.00,
+    "processedAt": "2025-10-30T00:00:00.000Z"
+  }
+}
+```
+
+### Get Return Details
+```http
+GET /api/returns/:id
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "_id": "return_id",
+    "status": "approved",
+    "items": [...],
+    "timeline": [
+      {
+        "status": "pending",
+        "timestamp": "2025-10-30T00:00:00.000Z"
+      },
+      {
+        "status": "approved",
+        "timestamp": "2025-10-30T01:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+## Wishlist Management
+
+### Add Item to Wishlist
+```http
+POST /api/wishlist
+Content-Type: application/json
+
+{
+  "productId": "product_id"
+}
+
+Response 201:
+{
+  "success": true,
+  "data": {
+    "_id": "wishlist_id",
+    "products": [
+      {
+        "_id": "product_id",
+        "name": "Product Name",
+        "price": 99.99,
+        "addedAt": "2025-10-30T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+### Remove Item from Wishlist
+```http
+DELETE /api/wishlist/:productId
+
+Response 200:
+{
+  "success": true,
+  "message": "Item removed from wishlist"
+}
+```
+
+### Move Item to Cart
+```http
+POST /api/wishlist/:productId/move-to-cart
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "wishlist": { /* updated wishlist */ },
+    "cart": { /* updated cart */ }
+  }
+}
+```
+
+### Get Wishlist
+```http
+GET /api/wishlist
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "_id": "wishlist_id",
+    "products": [
+      {
+        "_id": "product_id",
+        "name": "Product Name",
+        "price": 99.99,
+        "inStock": true,
+        "addedAt": "2025-10-30T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+```

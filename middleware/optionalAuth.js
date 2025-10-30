@@ -26,7 +26,48 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
       process.env.JWT_SECRET || 'testsecret123'
     );
 
-    req.user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id);
+
+    // Check global logout timestamp
+    if (user) {
+      if (user.lastLogout) {
+        const lastLogoutSec = Math.floor(new Date(user.lastLogout).getTime() / 1000);
+        if (decoded.iat <= lastLogoutSec) {
+          req.user = null;
+          return next();
+        }
+      }
+
+      // If token has jti, ensure session not revoked
+      if (decoded.jti) {
+        const sessions = user.sessions || [];
+        const matched = sessions.find((s) => s && (s.jti === decoded.jti));
+        if (!matched || matched.revoked) {
+          req.user = null;
+          return next();
+        }
+      }
+
+      // best-effort update lastUsedAt
+      try {
+        if (decoded.jti) {
+          const idx = (user.sessions || []).findIndex((s) => s && s.jti === decoded.jti);
+          if (idx !== -1) {
+            user.sessions[idx].lastUsedAt = new Date();
+            user.save().catch(() => {});
+          }
+        }
+      } catch (e) {}
+
+      req.user = user;
+      try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+      } catch (e) {}
+    } else {
+      req.user = null;
+    }
 
     next();
   } catch (error) {

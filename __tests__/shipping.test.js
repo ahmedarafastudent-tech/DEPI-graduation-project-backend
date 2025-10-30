@@ -12,31 +12,52 @@ describe('Shipping Controller Tests', () => {
   let admin;
   let user;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
+    // Clean up before each test
+    await User.deleteMany({});
+    await Shipping.deleteMany({});
+    
+    // Create admin user with dynamic ID ending in 'a'
+    const adminId = new mongoose.Types.ObjectId();
+    const adminIdStr = adminId.toString().slice(0, -1) + 'a';
+    const adminJti = new mongoose.Types.ObjectId().toString();
+    
     admin = await User.create({
+      _id: adminIdStr,
       name: 'Admin User',
-      email: 'admin@example.com',
+      email: `admin.${adminIdStr}@example.com`,
       password: 'admin123',
-      isAdmin: true
+      isAdmin: true,
+      sessions: [{
+        jti: adminJti,
+        userAgent: 'test',
+        ip: '127.0.0.1',
+        lastUsedAt: new Date()
+      }]
     });
-    adminToken = generateToken(admin._id);
+    adminToken = generateToken(admin._id, { jti: adminJti });
 
+    // Create regular user with dynamic ID
+    const userJti = new mongoose.Types.ObjectId().toString();
     user = await User.create({
+      _id: new mongoose.Types.ObjectId(),
       name: 'Test User',
-      email: 'user@example.com',
-      password: 'password123'
+      email: `user.${Date.now()}@example.com`,
+      password: 'password123',
+      sessions: [{
+        jti: userJti,
+        userAgent: 'test',
+        ip: '127.0.0.1',
+        lastUsedAt: new Date()
+      }]
     });
-    userToken = generateToken(user._id);
+    userToken = generateToken(user._id, { jti: userJti });
   });
 
   afterAll(async () => {
     await User.deleteMany({});
     await Shipping.deleteMany({});
     await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Shipping.deleteMany({});
   });
 
   describe('POST /api/shipping', () => {

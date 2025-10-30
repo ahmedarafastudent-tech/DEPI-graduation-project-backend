@@ -13,26 +13,24 @@ describe('Category Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
-    admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: 'admin123',
-      isAdmin: true
-    });
-    adminToken = generateToken(admin._id);
+    await User.deleteMany({}); // Clean up users before tests
+    await Category.deleteMany({}); // Clean up categories before tests
 
-    user = await User.create({
-      name: 'Test User',
-      email: 'user@example.com',
-      password: 'password123'
-    });
-    userToken = generateToken(user._id);
+    const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
+    admin = adminUser;
+    adminToken = token;
+
+    const { user: regularUser, token: regularToken } = await createUserAndToken(app, { isAdmin: false });
+    user = regularUser;
+    userToken = regularToken;
   });
 
   afterAll(async () => {
     await User.deleteMany({});
     await Category.deleteMany({});
-    await mongoose.connection.close();
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
   });
 
   beforeEach(async () => {

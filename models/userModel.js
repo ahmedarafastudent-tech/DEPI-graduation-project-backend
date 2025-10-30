@@ -21,7 +21,7 @@ const userSchema = mongoose.Schema(
       trim: true,
       lowercase: true,
       match: [
-        /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/,
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
         'Please enter a valid email address',
       ],
       index: true, 
@@ -55,6 +55,19 @@ const userSchema = mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    // Per-device/session tracking for JWTs. Each session stores a jti and metadata.
+    sessions: [
+      {
+        jti: { type: String, index: true },
+        userAgent: String,
+        ip: String,
+        createdAt: { type: Date, default: Date.now },
+        lastUsedAt: Date,
+        revoked: { type: Boolean, default: false },
+      },
+    ],
+    // Optional global logout timestamp: tokens issued before this are invalid.
+    lastLogout: Date,
     loginAttempts: {
       type: Number,
       default: 0,
@@ -116,21 +129,37 @@ userSchema.methods.getResetPasswordToken = function () {
   return resetToken;
 };
 
-// Added: validate reset token using timing-safe comparison to mitigate timing attacks.
-// Use Buffer and crypto.timingSafeEqual to compare hashed values safely.
-userSchema.methods.validateResetPasswordToken = function (token) {
-  const crypto = require('crypto');
-  if (!this.resetPasswordToken) return false;
-  const providedHash = crypto.createHash('sha256').update(token).digest();
-  const stored = Buffer.from(this.resetPasswordToken, 'hex');
+// Add session management methods
+userSchema.methods.cleanupSessions = function() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  this.sessions = (this.sessions || []).filter(s => 
+    !s.revoked || (s.lastUsedAt && s.lastUsedAt > thirtyDaysAgo)
+  );
+  return this;
+};
 
-  if (stored.length !== providedHash.length) return false;
+userSchema.methods.getSessionStats = function() {
+  const sessions = this.sessions || [];
+  return {
+    active: sessions.filter(s => !s.revoked).length,
+    revoked: sessions.filter(s => s.revoked).length,
+    total: sessions.length
+  };
+};
 
-  try {
-    return crypto.timingSafeEqual(stored, providedHash);
-  } catch (err) {
-    return false;
-  }
+userSchema.methods.pruneOldSessions = function(maxSessions = 50) {
+  if (!this.sessions || this.sessions.length <= maxSessions) return this;
+  
+  // Sort sessions by lastUsedAt (most recent first)
+  const sorted = [...this.sessions].sort((a, b) => {
+    const dateA = a.lastUsedAt || a.createdAt || new Date(0);
+    const dateB = b.lastUsedAt || b.createdAt || new Date(0);
+    return dateB - dateA;
+  });
+
+  // Keep only the most recent sessions up to maxSessions
+  this.sessions = sorted.slice(0, maxSessions);
+  return this;
 };
 
 // Add a compound index for common lookup patterns (email + isVerified).

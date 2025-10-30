@@ -13,13 +13,9 @@ describe('Analytics Controller Tests', () => {
   let user;
 
   beforeAll(async () => {
-    admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: 'admin123',
-      isAdmin: true
-    });
-    adminToken = generateToken(admin._id);
+    const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
+    admin = adminUser;
+    adminToken = token;
 
     user = await User.create({
       name: 'Test User',

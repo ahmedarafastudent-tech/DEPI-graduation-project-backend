@@ -167,7 +167,7 @@ afterAll(async () => {
 global.request = supertest(app);
 
 global.createTestUser = async (isAdmin = false) => {
-  const uniqueEmail = `test+${Date.now()}-${Math.floor(
+  const uniqueEmail = `test${Date.now()}-${Math.floor(
     Math.random() * 10000
   )}@example.com`;
   const user = await User.create({

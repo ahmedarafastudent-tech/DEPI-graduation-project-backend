@@ -13,13 +13,9 @@ describe('Newsletter Controller Tests', () => {
   let admin;
 
   beforeAll(async () => {
-    admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: 'admin123',
-      isAdmin: true
-    });
-    adminToken = generateToken(admin._id);
+    const { user: adminUser, token } = await createUserAndToken(app, { isAdmin: true });
+    admin = adminUser;
+    adminToken = token;
   });
 
   afterAll(async () => {
@@ -159,7 +155,7 @@ describe('Newsletter Controller Tests', () => {
     });
 
     it('should not allow access without admin privileges', async () => {
-      const userToken = generateToken(mongoose.Types.ObjectId());
+      const { token: userToken } = await createUserAndToken(app, { isAdmin: false });
       const res = await request(app)
         .get('/api/newsletter/subscribers')
         .set('Authorization', `Bearer ${userToken}`);
@@ -199,7 +195,7 @@ describe('Newsletter Controller Tests', () => {
     });
 
     it('should not allow sending without admin privileges', async () => {
-      const userToken = generateToken(mongoose.Types.ObjectId());
+      const { token: userToken } = await createUserAndToken(app, { isAdmin: false });
       const res = await request(app)
         .post('/api/newsletter/send')
         .set('Authorization', `Bearer ${userToken}`)

@@ -1,9 +1,9 @@
 /*
- Notes:
- - Imports the app from `app.js` which re-exports the main Express app without starting an HTTP server.
- - Uses the existing test setup (global in-memory MongoDB) provided by `__tests__/setup.js`.
- - Uses deterministic tokens for reset flows by stubbing `crypto.randomBytes` where needed.
- - Assumes `__tests__/setup.js` already mocks outbound email sending.
+Notes:
+- Imports the app from `app.js` which re-exports the main Express app without starting an HTTP server.
+- Uses the existing test setup (global in-memory MongoDB) provided by `__tests__/setup.js`.
+- Uses deterministic tokens for reset flows by stubbing `crypto.randomBytes` where needed.
+- Assumes `__tests__/setup.js` already mocks outbound email sending.
 */
 
 const request = require('supertest');
@@ -25,7 +25,8 @@ describe('Auth Controller Integration Tests', () => {
   beforeAll((done) => {
     // Create server for this test suite
     server = http.createServer(app);
-    server.listen(0, () => { // Use port 0 for random available port
+    server.listen(0, () => {
+      // Use port 0 for random available port
       done();
     });
     api = () => request(server);

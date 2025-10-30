@@ -10,7 +10,6 @@ const morganLogger = require('./middleware/morganLogger');
 
 dotenv.config();
 
-// Create Express app
 const app = express();
 
 // Ensure correct client IP behind proxies and set BEFORE security middlewares
@@ -36,17 +35,32 @@ app.resetRateLimit = async () => {
     if (process.env.NODE_ENV !== 'test') return;
 
     // If the security middleware stored rate limiters on app.locals, clear them.
-    if (app.locals && app.locals.rateLimiters) {
-      // Each limiter may expose `resetAll` or similar — call if present.
-      for (const limiter of app.locals.rateLimiters) {
-        if (typeof limiter.resetAll === 'function') {
-          try { limiter.resetAll(); } catch (_) {}
-        } else if (limiter && limiter.store && typeof limiter.store.clear === 'function') {
-          try { limiter.store.clear(); } catch (_) {}
+    // Support multiple possible storage shapes used by the security middleware
+    // older code used `app.locals.rateLimiters` and the newer security
+    // implementation uses `app.locals.rateLimitTracking` with a `limiters`
+    // Set. Clear any of these if present so tests don't leak state.
+    if (app.locals) {
+      if (app.locals.rateLimiters) {
+        for (const limiter of app.locals.rateLimiters) {
+          if (limiter && typeof limiter.resetAll === 'function') {
+            try { limiter.resetAll(); } catch (_) {}
+          } else if (limiter && limiter.store && typeof limiter.store.clear === 'function') {
+            try { limiter.store.clear(); } catch (_) {}
+          }
         }
       }
-      // Also clear any generic tracking object used by tests
-      app.locals.rateLimitTracking = {};
+
+      if (app.locals.rateLimitTracking && app.locals.rateLimitTracking.limiters) {
+        for (const limiter of app.locals.rateLimitTracking.limiters) {
+          if (limiter && typeof limiter.resetAll === 'function') {
+            try { limiter.resetAll(); } catch (_) {}
+          } else if (limiter && limiter.store && typeof limiter.store.clear === 'function') {
+            try { limiter.store.clear(); } catch (_) {}
+          }
+        }
+        // also reset the tracking object
+        app.locals.rateLimitTracking = { limiters: new Set() };
+      }
     }
   } catch (err) {
     // swallow errors to avoid affecting test cleanup
@@ -56,8 +70,6 @@ app.resetRateLimit = async () => {
 };
 // --- end added helper ---
 
-// Import route modules and error handlers
-// (kept here to ensure security middleware is initialized before routes)
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -77,12 +89,10 @@ const taxRoutes = require('./routes/taxRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const db = require('./config/db');
 
-// Environment helpers used on startup logging
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -99,7 +109,6 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/tax', taxRoutes);
 
-// Attach error handlers (must be last)
 app.use(notFound);
 app.use(errorHandler);
 
@@ -119,7 +128,6 @@ if (require.main === module) {
       validateEnv();
       await db.connectDB();
 
-      // Start server
       app.listen(PORT, () => console.log(`Server running on ${BACKEND_URL}`));
     } catch (err) {
       console.error('Startup failed:', err.message || err);
@@ -156,5 +164,4 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Export the app and cleanup for testing
 module.exports = app;
